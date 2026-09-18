@@ -200,13 +200,19 @@ ROTULO_CLASSIFICACAO = {
 }
 
 
-def _montar(cortes: list[float], rampa: list[str], decimais: int) -> Escala:
+def _montar(
+    cortes: list[float], rampa: list[str], decimais: int, abertas: bool = False
+) -> Escala:
     """Monta a `Escala` a partir dos cortes já decididos.
 
     Extraído de `escala_natural` quando os outros dois métodos entraram: os
     três diferem só em **onde cortar**, e rótulo e cor se montam igual. Deixar
     isso duplicado seria como uma classificação ganhar um rótulo diferente da
     outra sem ninguém decidir.
+
+    ``abertas`` é para a escala fixa: a primeira classe se lê "< 2" e a
+    última "≥ 40", como a régua oficial se escreve — "40,0 a 112,8" mistura o
+    corte declarado com o máximo observado do ano, que é só o teto do `cut`.
     """
     cortes = [float(c) for c in cortes]
     if len(cortes) < 2:
@@ -221,10 +227,15 @@ def _montar(cortes: list[float], rampa: list[str], decimais: int) -> Escala:
     usadas = len(cortes) - 1
     indices = np.linspace(0, len(rampa) - 1, usadas).round().astype(int)
     tons = [rampa[i] for i in indices]
-    rotulos = [
-        f"{_formatar(cortes[i], decimais)} a {_formatar(cortes[i + 1], decimais)}"
-        for i in range(usadas)
-    ]
+    def faixa(i: int) -> str:
+        de, ate = _formatar(cortes[i], decimais), _formatar(cortes[i + 1], decimais)
+        if abertas and i == 0:
+            return f"< {ate}"
+        if abertas and i == usadas - 1:
+            return f"≥ {de}"
+        return f"{de} a {ate}"
+
+    rotulos = [faixa(i) for i in range(usadas)]
     cores = dict(zip(rotulos, tons, strict=True))
     cores[ROTULO_SEM_DADO] = SEM_DADO
     return Escala(cortes=cortes, rotulos=rotulos, cores=cores)
@@ -298,8 +309,12 @@ def escala_fixa(
     """
     limpos = pd.to_numeric(valores, errors="coerce").dropna()
     limites = sorted(float(c) for c in cortes)
+    # Cortes declarados inteiros se escrevem inteiros: "< 2", não "< 2,0".
+    # Os de 0–14 (0,5 · 2,5) continuam com a casa decimal.
+    if all(float(c).is_integer() for c in limites):
+        decimais = 0
     if limpos.empty or len(limites) < 2:
-        return _montar(limites, rampa, decimais)
+        return _montar(limites, rampa, decimais, abertas=True)
 
     teto = float(limpos.max())
     if teto > limites[-1]:
@@ -307,7 +322,7 @@ def escala_fixa(
     piso = float(limpos.min())
     if piso < limites[0]:
         limites = [piso, *limites[1:]]
-    return _montar(limites, rampa, decimais)
+    return _montar(limites, rampa, decimais, abertas=True)
 
 
 def escala(
@@ -1237,7 +1252,7 @@ def legenda(
             partes.append(f"<em>{escape(nomes[i])}</em>")
         if contagem is not None:
             partes.append(f"<b>{int(contagem.get(r, 0))}</b>")
-        return " · ".join(partes)
+        return " &nbsp;".join(partes)
 
     rotulos = [*escala.rotulos, ROTULO_SEM_DADO]
     itens = "".join(

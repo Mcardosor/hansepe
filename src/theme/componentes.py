@@ -724,15 +724,16 @@ def css_layout() -> str:
      A cada item novo a caixa cresce em largura, não em altura, que é a
      direção onde há folga: o mapa tem 500px de altura e sobra lateral. */
   display: grid;
-  grid-template-columns: repeat(2, auto);
+  /* Quantas colunas couberem: com nome e contagem cada item tem ~200px,
+     e numa coluna estreita a segunda coluna vazava para fora da caixa. */
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   align-content: start;
   gap: 5px 18px;
   /* Abaixo do mapa, e não flutuando sobre ele: em PE o estado ocupa a
      largura toda e a caixa tapava o litoral sul. Ao lado dela vai a tabela
      "municípios por classe", como no painel de origem. */
   position: relative;
-  width: max-content;
-  max-width: 100%;
+  width: 100%;
   margin: 8px 0 4px 0;
   padding: 10px 14px;
   border-radius: {tokens.RAIO_PAINEL};
