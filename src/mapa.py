@@ -890,8 +890,14 @@ def deck(
     destacado: str | None = None,
     metodo: str = "NATURAL",
     cortes_fixos: list[float] | None = None,
+    detalhes: list[tuple[str, pd.Series, str, int]] | None = None,
 ):
     """Mapa em pydeck, para o drill-down por clique.
+
+    ``detalhes`` é a lista de linhas extras do tooltip, no formato do painel
+    de origem — ``(rótulo, série indexada pela chave, cor, decimais)``. O
+    título e a métrica pintada vêm sempre; estas são os componentes que
+    dão contexto ao número (casos, curas, população).
 
     O coroplético do Plotly não emite evento de clique — ver
     docs/mapa-clique.md. O ``GeoJsonLayer`` do deck.gl faz *picking* por GPU,
@@ -921,6 +927,16 @@ def deck(
         lambda v: "—" if pd.isna(v) else _formatar(float(v), decimais)
     )
     dados["rotulo"] = dados[colunas[-1]].astype(str)
+    # O deck escapa HTML vindo das propriedades, então cada linha extra do
+    # tooltip entra como **valor** já formatado (`d0`, `d1`, …) e rótulo e
+    # cor — iguais para todas as feições — ficam no template.
+    for i, (_, serie, _, casas) in enumerate(detalhes or []):
+        dados[f"d{i}"] = dados[chave].astype(str).map(
+            lambda k, serie=serie, casas=casas: (
+                "—" if serie.get(k) is None or pd.isna(serie.get(k))
+                else _formatar(float(serie.get(k)), casas)
+            )
+        )
 
     limites, ilhas = limites_uteis(camada)
 
@@ -1053,14 +1069,21 @@ def deck(
         # recebe o index.html do Streamlit e loga um erro de JSON a cada
         # carga. Com `map_style=None` a chave some.
         map_style=None,
+        # Formato do painel de origem: título, a métrica pintada em destaque
+        # e, abaixo, os componentes com a bolinha na cor de cada métrica.
         tooltip={
-            "html": f"<b>{{rotulo}}</b><br>{rotulo_metrica}: {{exibicao}}",
+            "html": (
+                "<div style='font-weight:700;font-size:13px'>{rotulo}</div>"
+                f"<div style='opacity:.85;margin-bottom:4px'>{rotulo_metrica}: "
+                "<b>{exibicao}</b></div>" + _template_detalhes(detalhes or [])
+            ),
             "style": {
                 "backgroundColor": "rgba(17,24,39,.96)",
                 "color": "#fff",
                 "fontSize": "12px",
                 "borderRadius": "10px",
-                "padding": "6px 8px",
+                "padding": "8px 10px",
+                "lineHeight": "1.5",
             },
         },
     )
@@ -1160,6 +1183,24 @@ def _camadas_destaque(pydeck, dados, chave, destacado, coluna_nome):
         )
     )
     return camadas
+
+
+def _template_detalhes(detalhes) -> str:
+    """Trecho do template do tooltip com as linhas extras.
+
+    Cada linha é ``● rótulo  {dN}``, com a bolinha na cor da métrica, como
+    no painel de origem. Só o valor é interpolado pelo deck; rótulo e cor
+    são estáticos porque são os mesmos para toda feição.
+    """
+    from html import escape
+
+    return "".join(
+        f"<div style='display:flex;justify-content:space-between;gap:14px'>"
+        f"<span><i style='display:inline-block;width:8px;height:8px;"
+        f"border-radius:50%;background:{cor};margin-right:6px'></i>"
+        f"{escape(rotulo)}</span><b>{{d{i}}}</b></div>"
+        for i, (rotulo, _, cor, _) in enumerate(detalhes)
+    )
 
 
 def legenda(escala: Escala, titulo: str) -> str:

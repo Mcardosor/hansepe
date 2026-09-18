@@ -163,6 +163,20 @@ def _valores_mapa(ano: int, metrica: str, recorte: str, macro: str | None) -> pd
     return leitura.valores_por_geografia(escopo, metrica)
 
 
+#: Linhas do tooltip do mapa, como no painel de origem: casos, curas e
+#: população, cada uma na cor da métrica. A métrica pintada não repete.
+_COMPONENTES_TOOLTIP = (("casos", 0), ("cura", 0), ("pop", 0))
+
+
+@st.cache_data(ttl=TTL_DADOS, show_spinner=False)
+def _detalhes_tooltip(ano: int, metrica: str, recorte: str, macro: str | None):
+    return [
+        (pack.rotulo(m), _valores_mapa(ano, m, recorte, macro), pack.cor(m), casas)
+        for m, casas in _COMPONENTES_TOOLTIP
+        if m != metrica
+    ]
+
+
 @st.cache_data(ttl=TTL_DADOS, show_spinner=False)
 def _ranking(ano: int, metrica: str, top_n: int, recorte: str, macro: str | None):
     return leitura.ranking(
@@ -406,6 +420,7 @@ with esquerda:
                 destacado=nav.destacado or (nav.mun if nav.nivel == "MUN" and not nav.detalhe else None),
                 metodo=classificacao,
                 cortes_fixos=pack.cortes_fixos(nav.metrica),
+                detalhes=_detalhes_tooltip(nav.ano, nav.metrica, recorte_mapa, nav.macro),
             )
             evento = st.pydeck_chart(
                 desenho,
