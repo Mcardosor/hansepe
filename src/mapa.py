@@ -1215,15 +1215,38 @@ def _template_detalhes(detalhes) -> str:
     )
 
 
-def legenda(escala: Escala, titulo: str) -> str:
-    """Legenda em HTML — o deck.gl não desenha uma."""
+def legenda(
+    escala: Escala,
+    titulo: str,
+    contagem: pd.Series | None = None,
+    nomes: tuple[str, ...] | None = None,
+) -> str:
+    """Legenda em HTML — o deck.gl não desenha uma.
+
+    ``contagem`` (rótulo → n) põe ao lado de cada faixa quantas unidades
+    caem nela — substitui a tabela "regiões por classe" do painel de origem,
+    que repetia as faixas da legenda só para acrescentar o N. ``nomes`` dá
+    a cada classe o nome que a régua oficial usa ("baixa", "hiperendêmica"),
+    quando a escala é fixa e tem nome.
+    """
     from html import escape
 
+    def texto(i: int, r: str) -> str:
+        partes = [escape(r)]
+        if nomes and i < len(nomes):
+            partes.append(f"<em>{escape(nomes[i])}</em>")
+        if contagem is not None:
+            partes.append(f"<b>{int(contagem.get(r, 0))}</b>")
+        return " · ".join(partes)
+
+    rotulos = [*escala.rotulos, ROTULO_SEM_DADO]
     itens = "".join(
         f'<span class="mapa-legenda-item">'
-        f'<i style="background:{escape(escala.cores[r])}"></i>{escape(r)}</span>'
-        for r in [*escala.rotulos, ROTULO_SEM_DADO]
+        f'<i style="background:{escape(escala.cores[r])}"></i>{texto(i, r)}</span>'
+        for i, r in enumerate(rotulos)
         if r in escala.cores
+        # "sem dado" só aparece quando há alguém sem dado.
+        and (r != ROTULO_SEM_DADO or contagem is None or contagem.get(r, 0))
     )
     return (
         f'<div class="mapa-legenda">'

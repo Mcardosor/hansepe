@@ -751,7 +751,8 @@ def css_layout() -> str:
   opacity: .74;
   margin-bottom: 2px;
 }}
-.mapa-legenda-item {{ display: inline-flex; align-items: center; gap: 8px; }}
+.mapa-legenda-item {{ display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }}
+.mapa-legenda-item em {{ font-style: italic; opacity: .8; }}
 .mapa-legenda-item i {{
   width: 14px;
   height: 14px;
@@ -896,13 +897,7 @@ def css_layout() -> str:
   margin-bottom: 0;
 }}
 
-/* --- Regiões por classe: tabelinha ao lado da legenda ------------------- */
-.mapa-classes table {{ border-collapse: collapse; font-size: 12px; margin-top: 4px; }}
-.mapa-classes th {{ text-align: left; font-weight: 600; padding: 2px 10px 2px 0; opacity: .75; }}
-.mapa-classes td {{ padding: 2px 10px 2px 0; }}
-.mapa-classes td i {{ display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: middle; }}
-
-/* --- "Ver Recife inteiro": pílula com borda ------------------------------
+/* --- "Ver Pernambuco inteiro": pílula com borda ------------------------------
    O seletor é `.st-key-<key>`, a classe que o Streamlit carimba no contêiner
    de um widget com `key`. É o único gancho estável para um botão específico:
    um seletor de `button` pega todos os da página. */
@@ -1131,18 +1126,3 @@ def script_travar_zoom() -> str:
 
 
 
-
-def tabela_classes(escala, contagem, *, unidade: str) -> str:
-    """"Regiões por classe", como no painel de origem: quantas unidades caem
-    em cada cor da legenda. ``contagem`` é uma Series rótulo → n."""
-    linhas = "".join(
-        f'<tr><td><i style="background:{escape(escala.cores.get(r, "#EEE"))}"></i>{escape(r)}</td>'
-        f'<td>{int(contagem.get(r, 0))}</td></tr>'
-        for r in escala.rotulos
-    )
-    return (
-        f'<div class="mapa-classes"><div class="mapa-legenda-titulo">'
-        f'{escape(unidade.capitalize())} por classe</div>'
-        f'<table><thead><tr><th>Classe</th><th>N</th></tr></thead>'
-        f'<tbody>{linhas}</tbody></table></div>'
-    )

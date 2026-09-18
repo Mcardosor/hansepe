@@ -371,12 +371,12 @@ with resiliencia.painel("Controles"), st.container(border=True, key="cartao-cont
             "Cores",
             mapa.CLASSIFICACOES,
             format_func=lambda c: ROTULO_CLASSIFICACAO[c],
-            default=st.session_state.get("classificacao", "QUARTIL"),
+            default=st.session_state.get("classificacao", "FIXA"),
             help=AJUDA_CLASSIFICACAO,
         )
         if classificacao:
             st.session_state["classificacao"] = classificacao
-        classificacao = st.session_state.get("classificacao", "QUARTIL")
+        classificacao = st.session_state.get("classificacao", "FIXA")
     with col_busca:
         nomes = _municipios()
         opcoes = [TODO_O_ESTADO, *sorted(nomes, key=lambda c: nomes[c])]
@@ -438,15 +438,18 @@ with esquerda:
                 ),
             )
             st.components.v1.html(ui.script_travar_zoom(), height=0)
-            legenda, classes = st.columns([3, 2], vertical_alignment="top")
-            legenda.markdown(
-                mapa.legenda(escala, pack.rotulo(nav.metrica)), unsafe_allow_html=True
-            )
-            # "Regiões por classe", como no painel de origem: quantas unidades
-            # caem em cada cor.
-            contagem = mapa.classificar(serie_mapa.dropna(), escala).value_counts().sort_index()
-            classes.markdown(
-                ui.tabela_classes(escala, contagem, unidade=UNIDADE_RECORTE[recorte_mapa]),
+            # O N de cada classe vai na própria legenda. O painel de origem
+            # tem uma segunda caixa, "regiões por classe", que repete as faixas
+            # só para acrescentar a contagem — em quintis ela é sempre 37, e
+            # em endemicidade é onde o número diz algo ("9 hiperendêmicos").
+            contagem = mapa.classificar(serie_mapa, escala).value_counts()
+            st.markdown(
+                mapa.legenda(
+                    escala,
+                    pack.rotulo(nav.metrica),
+                    contagem=contagem,
+                    nomes=pack.nomes_fixos(nav.metrica) if classificacao == "FIXA" else None,
+                ),
                 unsafe_allow_html=True,
             )
 

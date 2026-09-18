@@ -148,8 +148,21 @@ CORTES_FIXOS = {
 }
 
 
+#: Nome de cada classe da escala fixa, na ordem dos cortes — é como o
+#: Ministério chama as faixas, e é o que a legenda mostra ao lado do número.
+NOMES_FIXOS = {
+    "incid": ("baixa", "média", "alta", "muito alta", "hiperendêmica"),
+    "taxa_det_0_14": ("baixa", "média", "alta", "muito alta", "hiperendêmica"),
+    "prop_grau2_pct": ("baixo", "médio", "alto"),
+}
+
+
 def cortes_fixos(metrica: str) -> tuple[float, ...] | None:
     return CORTES_FIXOS.get(metrica)
+
+
+def nomes_fixos(metrica: str) -> tuple[str, ...] | None:
+    return NOMES_FIXOS.get(metrica)
 
 
 ICONES_KPI = {

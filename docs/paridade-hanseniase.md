@@ -83,12 +83,15 @@ tratamento em curso. Reproduzimos e o tooltip explica. O indicador de cura
 do MS (coorte PB do ano anterior, MB de dois anos antes) entra com o
 microdado.
 
-## 4. Classificação do mapa — quintis reproduzidos, mais duas
+## 4. Classificação do mapa — abre em endemicidade; quintis disponíveis
 
 A origem reparte os 185 municípios em cinco classes de 37 (quintis) e a
-régua muda a cada ano. É o padrão aqui também, e o controle "Cores" oferece
-quebras naturais e a escala fixa de endemicidade do MS, que a origem não
-tem.
+régua muda a cada ano; ao lado da legenda, uma tabela "regiões por classe"
+repete as faixas com o N — sempre 37. Aqui o mapa abre na **escala de
+endemicidade do MS** (baixa < 2 … hiperendêmica ≥ 40), comparável entre
+anos, e o N entra na própria legenda, onde passa a informar ("11
+hiperendêmicos" em 2025). Quintis e quebras naturais continuam no controle
+"Cores". Decisão de 18/set/2026, depois de o usuário estranhar os 37.
 
 ## 5. Canal endêmico — cinco anos em vez de três
 

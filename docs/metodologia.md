@@ -73,16 +73,20 @@ dos 185 municípios reproduz o estado exatamente (teste em
 
 Três classificações de cor, escolhidas no controle "Cores":
 
-- **Quintis** (padrão, a do painel de origem): um quinto dos municípios em
-  cada cor — 37 por classe. A régua é recalculada a cada ano.
-- **Quebras naturais**: agrupa municípios parecidos (k-means 1-D).
-- **Endemicidade**: os parâmetros do Ministério da Saúde para a taxa de
+- **Endemicidade** (padrão): os parâmetros do Ministério da Saúde para a taxa de
   detecção geral — baixa < 2, média 2–10, alta 10–20, muito alta 20–40,
   hiperendêmica ≥ 40 por 100 mil — e para 0–14 (< 0,5 · 0,5–2,5 · 2,5–5 ·
-  5–10 · ≥ 10). É a única régua que deixa dois anos comparáveis.
+  5–10 · ≥ 10). É a única régua que deixa dois anos comparáveis, e a
+  legenda diz quantos municípios caem em cada faixa — em 2025, 11
+  hiperendêmicos.
+- **Quintis** (a do painel de origem): um quinto dos municípios em cada cor
+  — 37 por classe, sempre, porque é assim que se constrói. A régua é
+  recalculada a cada ano.
+- **Quebras naturais**: agrupa municípios parecidos (k-means 1-D).
 
-A tabela "por classe" ao lado da legenda diz quantas unidades caem em cada
-cor. Clicar numa macrorregião mostra as regiões de saúde dela; numa região,
+O N de cada classe vai na própria legenda; o painel de origem tem uma
+segunda caixa, "regiões por classe", que repete as faixas só para trazer a
+contagem. Clicar numa macrorregião mostra as regiões de saúde dela; numa região,
 os municípios dela; num município, entra nele. "Ver Pernambuco inteiro"
 volta ao topo.
 
