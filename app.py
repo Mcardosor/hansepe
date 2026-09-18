@@ -287,6 +287,9 @@ if (meses := _meses_com_dado(nav.ano)) < 12:
 
 
 def _card(metrica: str, atual, anterior) -> None:
+    """Um card de KPI. Os da faixa realçam a métrica ativa do mapa, como na
+    origem; os de proporção levam o nome inteiro e não têm ícone, como lá."""
+    proporcao = metrica in pack.FRACAO_KPI
     valor = getattr(atual, metrica, None)
     antes = getattr(anterior, metrica, None) if anterior else None
     taxa = metrica in pack.TAXAS
@@ -297,17 +300,18 @@ def _card(metrica: str, atual, anterior) -> None:
             sub += f" • {ui.formatar_inteiro(num)} de {ui.formatar_inteiro(den)}"
     st.markdown(
         ui.kpi_card(
-            pack.rotulo_curto(metrica),
+            pack.rotulo(metrica) if proporcao else pack.rotulo_curto(metrica),
             ui.formatar_decimal(valor) if taxa else ui.formatar_inteiro(valor),
             cor=pack.cor(metrica),
             subtitulo=sub,
+            selecionado=(not proporcao) and metrica == nav.metrica,
             badge_delta=ui.delta(
                 valor, antes, taxa=taxa, bom_se_cai=metrica in pack.BOM_SE_CAI
             ),
             ajuda=" — ".join(
                 parte for parte in (pack.rotulo(metrica), pack.descricao(metrica)) if parte
             ),
-            icone=pack.icone(metrica),
+            icone="" if proporcao else pack.icone(metrica),
         ),
         unsafe_allow_html=True,
     )

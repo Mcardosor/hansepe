@@ -17,6 +17,13 @@ Localmente, com a junção `data -> ../sinan/data`:
 SINAN_DATA_DIR=./data docker compose up -d --build
 ```
 
+No Git Bash, `-v /app/data` vira `C:/Program Files/Git/app/data` e o volume
+não monta — o container fica `healthy` com `FileNotFoundError` na página.
+Rode com `MSYS_NO_PATHCONV=1`, ou pelo PowerShell.
+
+```bash
+```
+
 ## O bloco do nginx
 
 A acrescentar em `/etc/nginx/sites-enabled/telessaude`, junto dos outros

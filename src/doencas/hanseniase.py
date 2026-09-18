@@ -50,8 +50,9 @@ ROTULOS = {
     "letalidade": "Letalidade (%)",
     "casos_0_14": "Casos novos de 0 a 14 anos",
     "taxa_det_0_14": "Taxa de detecção 0–14 (por 100 mil hab.)",
-    "prop_mb_pct": "Proporção multibacilar (%)",
-    "prop_grau2_pct": "Proporção grau II no diagnóstico (%)",
+    # Nomes como o painel de origem escreve nos cards.
+    "prop_mb_pct": "Proporção multibacilar (MB)",
+    "prop_grau2_pct": "Proporção grau II (diagnóstico)",
 }
 
 #: Os cinco cards clicáveis do painel de origem, na ordem de lá, e as duas
