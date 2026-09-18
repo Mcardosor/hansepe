@@ -875,6 +875,14 @@ def _camada_rotulos(pydeck, dados):
     )
 
 
+#: Estilo MapLibre sem fontes nem camadas: tela em branco atrás dos polígonos.
+#:
+#: Como URL `data:` e não como dict: o Streamlit faz `mapStyle.indexOf(...)`
+#: no navegador e quebra com objeto. O MapLibre busca a URL como qualquer
+#: outra, e o navegador resolve `data:` sem ir à rede.
+ESTILO_SEM_FUNDO = 'data:application/json,{"version":8,"sources":{},"layers":[]}'
+
+
 def deck(
     camada,
     valores: pd.Series,
@@ -1064,10 +1072,13 @@ def deck(
             # `initialViewState` é sempre inicial de fato.
         ),
         map_provider=None,
-        # `map_provider=None` sozinho não basta: o pydeck ainda emite
-        # `mapStyle: "__MAP_STYLE__"`, o navegador busca `/__MAP_STYLE__`,
-        # recebe o index.html do Streamlit e loga um erro de JSON a cada
-        # carga. Com `map_style=None` a chave some.
+        # **Sem mapa de fundo**, como no painel de origem. `map_style=None`
+        # não basta: o Streamlit faz `mapStyle ||= <Carto positron/dark>` no
+        # navegador e desenha um basemap com rótulos de estados vizinhos em
+        # volta de PE. Um estilo MapLibre vazio é "verdadeiro" para esse
+        # `||=` e não desenha nada — é o único jeito de dizer "nenhum". Entra
+        # depois do construtor, abaixo: o pydeck só aceita dict de estilo com
+        # `map_provider="mapbox"`, que puxaria o Mapbox de volta.
         map_style=None,
         # Formato do painel de origem: título, a métrica pintada em destaque
         # e, abaixo, os componentes com a bolinha na cor de cada métrica.
@@ -1088,6 +1099,7 @@ def deck(
         },
     )
 
+    mapa_deck.map_style = ESTILO_SEM_FUNDO
     _compactar(mapa_deck)
 
     # O zoom pela roda do mouse é bloqueado no DOM, por
