@@ -1,0 +1,22 @@
+# Os dados entram por volume, não pela imagem: são 209 MB que mudam quando a
+# equipe parceira manda extração nova, e não a cada commit. Copiá-los para
+# dentro obrigaria a rebuildar a imagem para trocar dado.
+data/
+
+# Ambiente local, cache e histórico não têm o que fazer numa imagem.
+.venv/
+.git/
+__pycache__/
+**/__pycache__/
+*.pyc
+
+# Nada disso roda em produção.
+tests/
+scripts/
+docs/
+.pytest_cache/
+
+# Segredo: o `.env` guarda credencial do banco de investigação, que a
+# aplicação não usa. Fora da imagem por princípio, não por necessidade.
+.env
+.env.exemplo

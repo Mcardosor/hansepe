@@ -1,0 +1,43 @@
+# Painel de hanseníase de Pernambuco — `hansepe`.
+#
+# Hospedagem nossa, na VM (`/cenarios/hansepe/`), como o sinan e o tbpe: os
+# dados são montados como volume de `../sinan/data` (a mesma extração que
+# serve o painel nacional), não copiados para a imagem.
+services:
+  dashboard:
+    build: .
+    image: hansepe:latest
+    container_name: hansepe
+    restart: unless-stopped
+    ports:
+      # 8507 sinan, 8508 demografico-longevidade, 8509 dftb; 8510 é a próxima.
+      - 8510:8501
+    environment:
+      - PYTHONUNBUFFERED=1
+      - SINAN_DATA_DIR=/app/data
+      - SINAN_DOENCA=hanseniase
+      - STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
+    volumes:
+      # Código montado do repositório: `git pull` + restart aplica mudança sem
+      # rebuild. A imagem já tem uma cópia, então o container sobe mesmo se o
+      # volume faltar.
+      - ./app.py:/app/app.py:ro
+      - ./src:/app/src:ro
+      - ./.streamlit:/app/.streamlit:ro
+      # A extração do sinan, somente leitura. Em dev é a junção `data ->
+      # ../sinan/data`; na VM, o mesmo diretório do painel nacional.
+      - ${SINAN_DATA_DIR:-../dashboard-sinan-pe/data}:/app/data:ro
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 1500M
+        reservations:
+          cpus: "0.5"
+          memory: 512M
+    healthcheck:
+      test: [CMD, curl, -f, http://localhost:8501/cenarios/hansepe/_stcore/health]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s

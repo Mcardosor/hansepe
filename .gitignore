@@ -1,0 +1,49 @@
+# --- Dados (NUNCA versionar) ---------------------------------------------
+# O dataset SINAN/SIM tem ~888 MB e fica fora do repo.
+# `data/geo/` é derivado: regenere com `python -m scripts.preparar_geometria`.
+# Ver docs/contrato-dados.md para a origem e o layout esperado.
+#
+# A barra inicial ANCORA na raiz e é essencial: sem ela, `data/` casaria com
+# qualquer diretório de mesmo nome em qualquer nível — e engoliu `src/data/`,
+# a camada de dados inteira, por vários dias sem ninguém notar.
+/data/
+*.parquet
+*.geojson
+*.geojson.gz
+*.topojson
+*.shp
+*.shx
+*.dbf
+*.prj
+*.cpg
+*.csv
+
+# --- Python ---------------------------------------------------------------
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# --- Segredos -------------------------------------------------------------
+.env
+.streamlit/secrets.toml
+
+# --- DuckDB ---------------------------------------------------------------
+*.duckdb
+*.duckdb.wal
+
+# --- Cache local ----------------------------------------------------------
+.cache/
+cache/
+
+# --- Editores / SO --------------------------------------------------------
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini

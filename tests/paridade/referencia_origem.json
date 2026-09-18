@@ -1,0 +1,31 @@
+{
+  "_fonte": "Painel Shiny PE_HANSE_06_01, lido em 18/09/2026. Valores como exibidos na tela; fórmulas em docs/inventario-painel-origem.md.",
+  "PE": {
+    "2025": {
+      "taxa_deteccao": 24.64, "taxa_deteccao_0_14": 4.02,
+      "casos_novos": 2356, "casos_novos_0_14": 78, "curas": 135,
+      "var_taxa_deteccao": -1.23, "var_taxa_0_14": -2.33,
+      "var_casos_novos": -112, "var_casos_0_14": -47, "var_curas": -953,
+      "prop_mb_pct": 82.9, "prop_grau2_pct": 10.0,
+      "quintis_municipios": [0.0, 5.0, 9.7, 16.9, 25.5, 112.8]
+    }
+  },
+  "macro_vale_sao_francisco_araripe": {
+    "2025": {"taxa_deteccao": 62.68, "casos_novos": 672, "curas": 29,
+             "var_taxa_deteccao": -2.12, "var_casos_novos": -19, "var_curas": -207,
+             "quintis_micro": [10.2, 18.1, 26.1, 43.4, 70.0, 96.6]}
+  },
+  "municipios_2025": {
+    "Abreu e Lima": {"casos_novos": 18, "taxa": 17.3, "obitos": 0, "curas": 2, "pop": 104248},
+    "Afogados da Ingazeira": {"casos_novos": 14, "taxa": 32.8, "obitos": 0, "curas": 4, "pop": 42672},
+    "Afranio": {"casos_novos": 15, "taxa": 77.3, "obitos": 0, "curas": 2, "pop": 19409},
+    "Agrestina": {"casos_novos": 2, "taxa": 8.1, "obitos": 0, "curas": 0, "pop": 24680},
+    "Serra Talhada": {"taxa": 34.407}
+  },
+  "canal_2025_abril": {"ano": 1.757, "2024": 2.426, "2023": 2.018, "2022": 1.862, "q1": 1.94, "q3": 2.222},
+  "serie_anual_2011": {"taxa": 33.529, "media_3_anos": 34.449},
+  "epicurva_2018_05": 272,
+  "piramide_2025_20_29": {"homens": 132, "mulheres": 87},
+  "casos_0_14_2024": {"casos": 125, "taxa": 6.349},
+  "topicos_2025": {"AVALIA_N_grau_zero_pct": 44.219, "TPALTA_N_transf_outro_pais_pct": 0.225}
+}
