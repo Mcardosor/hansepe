@@ -1064,13 +1064,17 @@ def deck(
             pydeck.Layer(
                 "TextLayer",
                 character_set=_caracteres([f"{nomes} (fora de escala)"]),
-                data=[{"posicao": [(x0 + x1) / 2, y0], "texto": f"{nomes} (fora de escala)"}],
+                # Ancorado na borda **direita** do quadro, crescendo para a
+                # esquerda: centrado, metade do texto saía pelo lado direito
+                # do canvas — o quadro fica no canto, e "Fernando de Noronha
+                # (fora de escala)" é mais largo que ele.
+                data=[{"posicao": [x1, y0], "texto": f"{nomes} (fora de escala)"}],
                 get_position="posicao",
                 get_text="texto",
                 get_size=10,
                 get_color=[110, 110, 110, 230],
                 get_alignment_baseline="'top'",
-                get_text_anchor="'middle'",
+                get_text_anchor="'end'",
                 pickable=False,
             )
         )

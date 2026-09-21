@@ -13,3 +13,7 @@ primaryColor = "#ED853A"
 
 [server]
 headless = true
+
+[client]
+# Sem o botão "Deploy" nem o menu de desenvolvedor na tela pública.
+toolbarMode = "minimal"
