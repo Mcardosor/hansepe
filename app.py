@@ -15,7 +15,7 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
-from src import doencas, grafico_componente, graficos, mapa, mapa_componente, resiliencia
+from src import doencas, grafico_componente, mapa, mapa_componente, resiliencia
 from src.data import canal, geo, leitura, recortes
 from src.data import kpis as calc
 from src.data.escopo import Escopo
@@ -512,7 +512,7 @@ with direita:
                 if canal_atual.anos:
                     fora = canal.meses_fora_da_faixa(canal_atual)
                     acima = int((fora["posicao"] == "acima").sum())
-                    rodape = graficos.AVISO_CANAL.format(
+                    rodape = grafico_componente.AVISO_CANAL.format(
                         n=len(canal_atual.anos),
                         anos=", ".join(str(a) for a in canal_atual.anos),
                     )
@@ -574,12 +574,12 @@ with direita:
                     cor=pack.cor(nav.metrica),
                     escala=escala_mapa,
                     selecionado=nav.destacado if nav.recorte == "MUN" else None,
-                    largura_rotulo=graficos.LARGURA_ROTULO_RANKING,
+                    largura_rotulo=grafico_componente.LARGURA_ROTULO_RANKING,
                 ),
                 altura=max(
                     ALTURA_LINHA_1 - 200,
-                    graficos.ALTURA_MIN_RANKING,
-                    graficos.ALTURA_BARRA_RANKING * len(tabela) + graficos.ALTURA_EIXO_RANKING,
+                    grafico_componente.ALTURA_MIN_RANKING,
+                    grafico_componente.ALTURA_BARRA_RANKING * len(tabela) + grafico_componente.ALTURA_EIXO_RANKING,
                 ),
                 key="ranking",
             )
@@ -667,7 +667,7 @@ with resiliencia.painel("Tópicos de interesse"), st.container(border=True, key=
         for inicio in range(0, len(escolhidas), TOPICOS_POR_LINHA):
             linha = escolhidas[inicio : inicio + TOPICOS_POR_LINHA]
             altura = max(
-                graficos.altura_composicao(len(_composicao(nav.ano, nav.nivel, nav.mun, nav.macro, nav.micro, v)))
+                grafico_componente.altura_composicao(len(_composicao(nav.ano, nav.nivel, nav.mun, nav.macro, nav.micro, v)))
                 for v in linha
             )
             altura = max(altura, ALTURA_MINIMA_TOPICO)

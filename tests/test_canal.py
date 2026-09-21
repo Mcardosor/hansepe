@@ -10,7 +10,6 @@ mudaram, e as duas exigem parar.
 from __future__ import annotations
 
 import numpy as np
-import pandas as pd
 import pytest
 
 from src.data import canal
@@ -152,112 +151,6 @@ def test_numero_de_anos_e_configuravel(esc: Escopo, n: int) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Gráfico
-# ---------------------------------------------------------------------------
-
-
-def _spec(canal_obj) -> dict:
-    from src import graficos
-    from src.doencas import hanseniase as pack
-
-    return graficos.canal_endemico(
-        canal_obj, rotulo=pack.rotulo("incid"), cor=pack.cor("incid")
-    ).to_dict()
-
-
-def test_faixa_e_area_entre_duas_linhas(canal_2023) -> None:
-    """Área com `y`/`y2`, e não duas áreas empilhadas como o ECharts obriga.
-
-    A primeira camada é a faixa; se ela perder o `y2`, virou empilhamento e o
-    desenho passa a depender da ordem das séries.
-    """
-    area = _spec(canal_2023)["layer"][0]
-    assert area["mark"]["type"] == "area"
-    assert "y2" in area["encoding"]
-
-
-def test_camadas_na_ordem_de_leitura(canal_2023) -> None:
-    """Faixa, bordas Q1 e Q3, anos anteriores, ano corrente, régua do tooltip.
-
-    Ordem é z-order no Altair: a linha do ano corrente tem de vir depois das
-    tracejadas de referência, ou elas passam por cima dela. A régua fica por
-    último para capturar o ponteiro sem que uma linha a intercepte.
-    """
-    camadas = _spec(canal_2023)["layer"]
-    marcas = [
-        c["mark"]["type"] if isinstance(c["mark"], dict) else c["mark"]
-        for c in camadas
-    ]
-    assert marcas == ["area", "line", "line", "line", "line", "rule"]
-
-    espessuras = [
-        c["mark"].get("strokeWidth", 0)
-        for c in camadas
-        if isinstance(c["mark"], dict) and c["mark"]["type"] == "line"
-    ]
-    assert espessuras[-1] == max(espessuras), "o ano corrente não é a linha mais grossa"
-
-
-def test_legenda_nomeia_todas_as_series(canal_2023) -> None:
-    """"Ano selecionado", cada ano de referência, Q1 e Q3 — os mesmos nomes do
-    painel de origem, para quem usa os dois não reaprender o vocabulário.
-
-    Uma escala de cor só é o que junta a legenda: com escalas independentes por
-    camada o Altair desenha as linhas certas e não monta legenda nenhuma.
-    """
-    from src import graficos
-
-    camadas = _spec(canal_2023)["layer"]
-    coloridas = [c for c in camadas if "color" in c.get("encoding", {})]
-    assert coloridas, "nenhuma camada encodifica cor — a legenda sumiu"
-
-    dominios = {tuple(c["encoding"]["color"]["scale"]["domain"]) for c in coloridas}
-    assert len(dominios) == 1, "camadas com domínios diferentes quebram a legenda"
-
-    esperado = (
-        graficos.SERIE_ATUAL,
-        *[str(a) for a in canal_2023.anos],
-        graficos.SERIE_Q1,
-        graficos.SERIE_Q3,
-    )
-    assert dominios.pop() == esperado
-
-
-def test_tooltip_e_unificado(canal_2023) -> None:
-    """Uma régua mostra todas as séries do mês de uma vez.
-
-    Tooltip por linha obrigaria a acertar o cursor em cada uma para comparar
-    março de 2023 com março de 2021 — que é a leitura que o gráfico existe
-    para dar.
-    """
-    from src import graficos
-
-    regua = _spec(canal_2023)["layer"][-1]
-    assert regua["mark"]["type"] == "rule"
-    titulos = [t["title"] for t in regua["encoding"]["tooltip"]]
-    assert titulos[0] == "Mês"
-    for serie in (graficos.SERIE_ATUAL, graficos.SERIE_Q1, graficos.SERIE_Q3):
-        assert serie in titulos
-    for ano in canal_2023.anos:
-        assert str(ano) in titulos
-    # Do mais recente ao mais antigo, a ordem de leitura do gráfico.
-    anos_no_tooltip = [t for t in titulos if t.isdigit()]
-    assert anos_no_tooltip == sorted(anos_no_tooltip, reverse=True)
-
-
-def test_grafico_vazio_nao_estoura() -> None:
-    from src import graficos
-
-    vazio = canal.Canal(
-        faixa=pd.DataFrame(columns=["mes", "mes_nome", "q1", "q3"]),
-        referencia=pd.DataFrame(columns=["mes", "mes_nome", "ano", "valor"]),
-        atual=pd.DataFrame(columns=["mes", "mes_nome", "valor"]),
-        anos=(),
-    )
-    assert graficos.canal_endemico(vazio, rotulo="x", cor="#000") is not None
-
-
-# ---------------------------------------------------------------------------
 # Epicurva
 # ---------------------------------------------------------------------------
 
@@ -286,57 +179,6 @@ def test_epicurva_fecha_com_o_canal_no_ano_corrente(esc: Escopo, canal_2023) -> 
     do_ano = canal.epicurva(esc).query(f"ano == {ANO}")
     assert len(do_ano) == 12
     assert list(do_ano["mes"]) == list(canal_2023.atual.sort_values("mes")["mes"])
-
-
-
-def test_grafico_da_epicurva_usa_eixo_temporal(esc: Escopo) -> None:
-    """São 168 pontos: num eixo de categoria o Altair escreveria os 168
-    rótulos e o eixo viraria uma tarja."""
-    from src import graficos
-    from src.doencas import hanseniase as pack
-
-    spec = graficos.epicurva(
-        canal.epicurva(esc), rotulo="Casos", cor=pack.cor("casos"), ano_em_foco=ANO
-    ).to_dict()
-    camadas = spec.get("layer", [spec])
-    assert camadas[0]["encoding"]["x"]["type"] == "temporal"
-    # Série inteira, trecho do ano em foco (mais grosso), régua do tooltip e o
-    # ponto que acende sob o cursor.
-    assert len(camadas) == 4
-    grossuras = [
-        c["mark"].get("strokeWidth")
-        for c in camadas
-        if isinstance(c["mark"], dict) and c["mark"]["type"] == "line"
-    ]
-    assert grossuras[1] > grossuras[0], "o ano em foco não é a linha mais grossa"
-
-
-def test_epicurva_pega_a_coluna_do_mes_e_nao_o_ponto(esc: Escopo) -> None:
-    """Com 168 pontos em poucos pixels, exigir que o cursor acerte o vértice
-    torna o dado inalcançável — era preciso caçar as pontinhas da linha.
-
-    A régua com `nearest` sobre a data resolve, pelo mesmo mecanismo do canal.
-    """
-    from src import graficos
-    from src.doencas import hanseniase as pack
-
-    spec = graficos.epicurva(
-        canal.epicurva(esc), rotulo="Casos", cor=pack.cor("casos"), ano_em_foco=ANO
-    ).to_dict()
-    marcas = [
-        c["mark"]["type"] if isinstance(c["mark"], dict) else c["mark"]
-        for c in spec["layer"]
-    ]
-    assert "rule" in marcas, "a régua do tooltip sumiu"
-
-    regua = spec["layer"][marcas.index("rule")]
-    assert [t["title"] for t in regua["encoding"]["tooltip"]] == ["Mês", "Casos"]
-
-    # A seleção precisa ser `nearest`, ou a régua volta a exigir pontaria.
-    selecao = next(iter(spec["params"] if "params" in spec else regua["params"]))
-    assert selecao["select"]["nearest"] is True
-    assert selecao["select"]["fields"] == ["data"]
-
 
 
 def test_canal_com_filtro_de_grau_e_subconjunto_do_total() -> None:

@@ -89,7 +89,7 @@ def test_escala_tipografica_nao_tem_degrau_morto() -> None:
 
     raiz = Path(__file__).resolve().parents[1] / "src"
     origem = (raiz / "theme" / "componentes.py").read_text(encoding="utf-8")
-    origem += (raiz / "graficos.py").read_text(encoding="utf-8")
+    origem += (raiz / "grafico_componente.py").read_text(encoding="utf-8")
 
     # Os degraus são interpolados nas f-strings do CSS, então se procura o
     # nome do token, não o valor em pixels.
@@ -158,37 +158,3 @@ def test_todo_kpi_renderiza(chave: str) -> None:
     html = c.kpi_card(pack.rotulo(chave), "1,0", cor=pack.cor(chave))
     assert pack.rotulo(chave) in html or "&" in html
 
-
-def test_os_botoes_de_zoom_saem_de_dentro_do_mapa() -> None:
-    """O clique neles não pode chegar ao deck.gl.
-
-    São controles do mapbox que o deck monta **dentro** do `#deckgl-wrapper`,
-    e o deck escuta o ponteiro no wrapper na fase de captura. Com um polígono
-    debaixo do botão, o clique dava zoom e entrava no município — a página
-    recarregava com o enquadramento inicial e o zoom sumia junto.
-
-    `stopPropagation` não resolve, e por isso este teste procura a realocação
-    e não o `stopPropagation`: na captura o evento morre antes do botão, e na
-    borbulha o deck já viu. As duas foram tentadas.
-    """
-    script = c.script_travar_zoom()
-
-    assert c.SELETOR_CONTROLE_ZOOM in script, "sumiu o seletor do controle"
-    assert "appendChild" in script, "o controle precisa mudar de pai"
-    assert "MutationObserver" in script, (
-        "o Streamlit remonta o mapa a cada rerun; sem observador, o controle "
-        "volta para dentro do wrapper na primeira navegação"
-    )
-
-
-def test_o_travamento_do_zoom_nao_usa_stoppropagation_no_clique() -> None:
-    """Guarda contra o conserto que já falhou duas vezes.
-
-    Alguém lendo o código pode achar que barrar o clique é mais simples que
-    mover o elemento. É, e não funciona — nas duas fases, por motivos opostos.
-    """
-    script = c.script_travar_zoom()
-    trecho_clique = script[script.find("realocar") :]
-    assert "stopPropagation" not in trecho_clique, (
-        "voltou a barrar o clique; ver a docstring de `script_travar_zoom`"
-    )

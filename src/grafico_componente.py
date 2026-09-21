@@ -6,9 +6,13 @@ como componente estático: o iframe e a instância do gráfico ficam vivos
 entre reruns, e cada render é um `setOption` — o ECharts interpola o que
 mudou (barra crescendo, barra trocando de posição, linha se redesenhando).
 
-A migração é gráfico a gráfico. O `graficos.py` Altair continua valendo
-para o que ainda não passou; o que passou tem aqui uma função que devolve a
-**opção** ECharts (um dict), e o `app.py` a entrega a :func:`desenhar`.
+Cada gráfico é uma função que devolve a **opção** ECharts (um dict), e o
+`app.py` a entrega a :func:`desenhar`. As constantes de layout que o
+`app.py` usa para dimensionar os iframes ficam no fim do módulo.
+
+O `graficos.py` Altair, que era o desenho original, saiu em 21/set/2026
+depois que os três painéis (tbpe, hansepe, RecifeTB) migraram — as
+decisões de cada gráfico estão nas docstrings daqui.
 
 Regras da opção, para a animação funcionar:
 
@@ -37,9 +41,10 @@ DIRETORIO = Path(__file__).resolve().parent / "componente_grafico"
 ANIMACAO_ENTRADA_MS = 500
 ANIMACAO_ATUALIZACAO_MS = 550
 
-#: Fonte e tamanhos do tema do Altair (`graficos.tema`), para os dois
-#: conviverem sem parecer duas famílias.
-_FONTE_PX = 12
+#: Tamanho de rótulo de eixo, legenda e tooltip: o degrau `TEXTO_XS` da
+#: escala tipográfica do tema, em número — o ECharts quer número, o CSS
+#: quer unidade.
+_FONTE_PX = int(tokens.TEXTO_XS.rstrip("px"))
 _COR_EIXO = "rgba(128,128,128,.35)"
 _COR_GRADE = "rgba(128,128,128,.18)"
 
@@ -683,3 +688,89 @@ def barras_empilhadas_com_linha(
         "casasPorSerie": {rotulo_linha: casas_linha, **{r: 0 for r in barras.values()}},
     })
     return opt
+
+
+# ---------------------------------------------------------------------------
+# Layout que o app.py usa para dimensionar os componentes
+# ---------------------------------------------------------------------------
+
+#: Faixa vertical por barra do ranking, na **área de plotagem**.
+#:
+#: Medido no navegador: a caixa do rótulo tem 16px de altura com a fonte de
+#: 12px, e o Vega esconde um nome sim outro não assim que o passo entre eles
+#: fica abaixo disso. Com 27 UFs em 512px de área útil o passo caía para
+#: 15,3px — colidia por menos de um pixel, e metade dos nomes sumia.
+#:
+#: 22 deixa 6px de folga sobre a caixa, o bastante para a variação de métrica
+#: de fonte entre navegadores.
+ALTURA_BARRA_RANKING = 22
+
+#: Altura que o eixo x, seu título e as margens comem antes de sobrar espaço
+#: para as barras. Medido no navegador: 594px de gráfico davam 512px de área
+#: de plotagem.
+#:
+#: Entra na conta porque a primeira tentativa de conserto reservou 22px por
+#: barra sobre a altura **total** e continuou escondendo nomes — as faixas
+#: recebiam 19px, não 22.
+ALTURA_EIXO_RANKING = 82
+
+#: Piso do ranking, para uma lista de 5 não virar uma tira.
+ALTURA_MIN_RANKING = 180
+
+#: Espaço para o nome no eixo do ranking, em pixels.
+#:
+#: **O critério não é estética, é identificação.** Cortado curto demais, dois
+#: municípios diferentes da mesma UF viram o mesmo texto, e o ranking deixa de
+#: dizer de quem é a barra. Medido sobre os 5.571 nomes, com a largura de
+#: :data:`PX_POR_CARACTERE`:
+#:
+#: ====== ======== =========
+#: limite cortados ambíguos
+#: ====== ======== =========
+#: 98         891        49
+#: 120        429         4
+#: **150**     23         0
+#: 175          2         0
+#: ====== ======== =========
+#:
+#: 98 era o que o Vega dava sozinho, e ali "São Domingos do Maranhão" e "São
+#: Domingos do Azeitão" apareciam idênticos. 150 é o **menor** valor onde
+#: nenhum par colide; os 23 que ainda cortam continuam únicos, e o nome
+#: inteiro está no tooltip. Subir para 175 salvaria dois nomes e custaria 25px
+#: de barra a todo mundo.
+LARGURA_ROTULO_RANKING = 150
+
+#: Largura média de um caractere do rótulo, medida no navegador com a fonte de
+#: 12px do tema: "José Gonçalves de Minas" ocupa 132px em 23 caracteres.
+#:
+#: Serve para o teste conferir a propriedade de identificação sem abrir um
+#: navegador. É aproximação — nome cheio de "i" ocupa menos que um de "m" —,
+#: mas o erro é da ordem de um caractere e a margem entre 150 e o primeiro
+#: valor que colide (120) é de seis.
+PX_POR_CARACTERE = 5.74
+
+
+#: Espaço vertical de cada barra da composição.
+ALTURA_BARRA_COMPOSICAO = 30
+
+#: Espaço que não é barra: título, eixo x e o rótulo do eixo.
+#:
+#: **Precisa entrar na conta separado.** A primeira versão da grade usava
+#: `max(altura, 30 * n)`, e com cinco categorias isso dava exatamente os 150px
+#: pedidos pelo painel — os mesmos 150 de um gráfico de três. Como o cromo come
+#: os primeiros 85, sobravam 65px para cinco barras, 13 cada, e os rótulos
+#: encavalavam. O sintoma era só em "Tipo de entrada", que é a variável com
+#: mais categorias entre as dez que abrem.
+CROMO_COMPOSICAO = 85
+
+
+def altura_composicao(categorias: int) -> int:
+    """Altura total de um gráfico de composição com ``categorias`` barras."""
+    return CROMO_COMPOSICAO + ALTURA_BARRA_COMPOSICAO * max(categorias, 1)
+
+
+AVISO_CANAL = (
+    "A faixa azul é o intervalo interquartil dos {n} anos anteriores "
+    "({anos}): metade dos meses históricos caiu dentro dela. Mês acima do "
+    "topo da faixa está fora do padrão desta cidade para aquele mês."
+)

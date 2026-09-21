@@ -72,8 +72,8 @@ PE) → `src/data/*` → `src/mapa.py` e `src/graficos.py`.
   vivo, voo da câmera e cor interpolada) e `src/grafico_componente.py` +
   `src/componente_grafico/` (ECharts vivo: ranking, tópicos, canal, série
   anual, epicurva, pirâmide e os dois empilhados do rodapé). `key` estável,
-  clique com nonce em `session_state`. O `graficos.py` Altair ficou sem
-  consumidor na tela. Detalhes e medição: `../tbpe/docs/mapa-clique.md`.
+  clique com nonce em `session_state`. O `graficos.py` Altair saiu em
+  21/set/2026. Detalhes e medição: `../tbpe/docs/mapa-clique.md`.
 - **Animação não se mede no navegador embutido do app** (1 frame/s com a
   janela oculta): falso negativo.
 - **`casos_total` da hanseníase é toda entrada no registro**, não caso novo.

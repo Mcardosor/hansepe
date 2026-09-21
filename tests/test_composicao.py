@@ -7,10 +7,8 @@ camada de dados de propósito: se ficasse no gráfico, qualquer outro consumidor
 
 from __future__ import annotations
 
-import pandas as pd
 import pytest
 
-from src import graficos
 from src.data import leitura
 from src.data.escopo import Escopo
 from src.doencas import hanseniase as pack
@@ -78,25 +76,6 @@ def test_base_pequena_nao_produz_percentual() -> None:
     assert dados["pct"].isna().all()
     # A contagem continua à vista: a regra é estatística, não censura.
     assert (dados["n"] > 0).all()
-
-
-def test_grafico_troca_o_eixo_conforme_a_base() -> None:
-    grande = leitura.composicao(Escopo(pack.DOENCA, 2024, "BR"), "CLASSOPERA")
-    pequeno = leitura.composicao(
-        Escopo(pack.DOENCA, 2024, "MUN", uf="BA", mun="290689"), "CLASSOPERA"
-    )
-    eixo = lambda d: graficos.composicao(
-        d, rotulo="Classificação operacional", cor="#B4442E"
-    ).to_dict()["encoding"]["x"]["title"]
-
-    assert eixo(grande) == "% dos casos"
-    if not pequeno.empty:
-        assert eixo(pequeno) == "Casos"
-
-
-def test_grafico_vazio_nao_quebra() -> None:
-    vazio = pd.DataFrame(columns=["categoria", "n", "pct", "total"])
-    assert graficos.composicao(vazio, rotulo="X", cor="#000") is not None
 
 
 def test_contagem_nao_conta_em_dobro() -> None:

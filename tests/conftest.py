@@ -29,12 +29,10 @@ PRECISAM_DE_DADOS = (
     "test_desfechos.py",
     "test_estados_vazios.py",
     "test_geo.py",
-    "test_graficos.py",
     "test_indicadores_programa.py",
     "test_mapa.py",
     "test_navegacao_mapa.py",
     "test_performance.py",
-    "test_piramide.py",
     "test_publicacao.py",
     "test_recortes.py",
 )
