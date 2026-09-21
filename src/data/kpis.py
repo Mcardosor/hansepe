@@ -221,6 +221,12 @@ def calcular(esc: Escopo, regra_interrupcao: str | None = None) -> Kpis:
     desfechos = contagem_desfechos(esc, enc)
 
     casos = inc.get("casos_total")
+    if esc.doenca == "HANSENIASE":
+        # Casos novos pela definição do Ministério (`MODOENTR = 1`). O
+        # `casos_total` da extração é toda entrada no registro ativo —
+        # recidiva e transferência inclusive — e é o que o painel de origem
+        # mostra. Decisão de 20/set/2026: docs/paridade-hanseniase.md §1.
+        casos = leitura.casos_novos_ms(esc)
     cura = inc.get("casos_cura")
     pop = inc.get("pop_total")
 
@@ -375,11 +381,12 @@ def calcular_regiao(esc: Escopo, municipios: list[str]) -> Kpis:
         sum(float(v) for v in partes if _num(v) is not None)
         if any(_num(v) is not None for v in partes) else None
     )
+    casos = c.get("casos_novos_ms")
     return Kpis(
-        casos=_num(c.get("casos_total")),
+        casos=_num(casos),
         cura=_num(c.get("casos_cura")),
         pop=_num(c.get("pop_total")),
-        incid=_div(c.get("casos_total"), c.get("pop_total"), POR_100K),
+        incid=_div(casos, c.get("pop_total"), POR_100K),
         casos_0_14=_num(c.get("casos_0_14_total")),
         pop_0_14=_num(c.get("pop_0_14_total")),
         taxa_det_0_14=_div(c.get("casos_0_14_total"), c.get("pop_0_14_total"), POR_100K),

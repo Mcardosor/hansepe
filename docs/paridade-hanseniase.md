@@ -9,11 +9,12 @@ divergir é bug.**
 valores lidos da tela deles, congelados em `referencia_origem.json` em
 18/set/2026 — antes de qualquer fórmula ser escrita.
 
-**Estado em 18/set/2026:** os sete cards de PE 2025, as cinco variações
-contra 2024, quatro popups municipais e o drill-down da macro Vale do
-S. Francisco/Araripe batem no dígito. As divergências abaixo são todas
-**decididas**, nenhuma em aberto com a equipe parceira; a §1 é decisão a
-confirmar com o chefe.
+**Estado em 20/set/2026:** cinco dos sete cards de PE 2025 (0–14, casos
+0–14, curas, MB, grau II), as variações deles, curas e população dos popups
+municipais e o drill-down da macro batem no dígito. **Casos novos e taxa de
+detecção divergem de propósito** desde 20/set/2026: seguem a definição do
+Ministério (§1), e `tests/paridade` prende a distância. As demais
+divergências estão decididas; nenhuma em aberto com a equipe parceira.
 
 > Paridade mede concordância, não correção. Os dois painéis leem a mesma
 > extração, então concordar entre si não prova nada contra a fonte oficial —
@@ -21,47 +22,55 @@ confirmar com o chefe.
 
 ---
 
-## 0. Onde batemos
+## 0. Onde batemos — e onde não, de propósito
 
-| Item | PE 2025 | Origem |
-|---|---:|---:|
-| Taxa de detecção | 24,64 | 24,64 |
-| Taxa de detecção 0–14 | 4,02 | 4,02 |
-| Casos novos | 2.356 | 2.356 |
-| Casos 0–14 | 78 | 78 |
-| Curas | 135 | 135 |
-| Multibacilar | 82,9% | 82,9% |
-| Grau II | 10,0% | 10,0% |
-| Macro Vale S.Francisco/Araripe — detecção · casos · curas | 62,68 · 672 · 29 | 62,68 · 672 · 29 |
-| Abreu e Lima — casos · taxa · curas · população | 18 · 17,3 · 2 · 104.248 | idem |
+| Item | PE 2025 | Origem | |
+|---|---:|---:|---|
+| **Casos novos** | **1.590** | 2.356 | §1 — definição do MS |
+| **Taxa de detecção** | **16,63** | 24,64 | §1 |
+| Taxa de detecção 0–14 | 4,02 | 4,02 | |
+| Casos 0–14 | 78 | 78 | |
+| Curas | 135 | 135 | |
+| Multibacilar | 82,9% | 82,9% | |
+| Grau II | 10,0% | 10,0% | |
+| Macro Vale S.Francisco/Araripe — casos · detecção · curas | 413 · 38,52 · 29 | 672 · 62,68 · 29 | §1 nos dois primeiros |
+| Abreu e Lima — casos · taxa · curas · população | 8 · 7,7 · 2 · 104.248 | 18 · 17,3 · 2 · 104.248 | §1 nos dois primeiros |
 
 ---
 
-## 1. "Casos novos" são todas as entradas no registro — reproduzido, e divergente do MS
+## 1. Casos novos pela definição do MS — divergente da origem, decidido
 
 `incidence.casos_total` para a hanseníase conta **todas as entradas** no
 registro ativo do ano: caso novo, recidiva, transferências e outros
 reingressos. Para a tuberculose a mesma coluna já vem filtrada por tipo de
-entrada; para a hanseníase não. Em PE 2025:
+entrada; para a hanseníase não — e o painel de origem exibe assim. O
+Boletim Epidemiológico de Hanseníase define os indicadores de endemicidade
+sobre **casos novos** (`MODOENTR = 1`). Em PE 2025:
 
-| | Todas as entradas | `MODOENTR = 1` (caso novo) | `leprosy` (painel da família, casos novos) |
+| | Todas as entradas (origem) | `MODOENTR = 1` (**este painel**) | `leprosy` (painel da família) |
 |---|---:|---:|---:|
-| Casos | 2.356 | 1.590 | — (2024: 1.704) |
-| Detecção /100 mil | 24,64 → *muito alta* | 16,6 → *alta* | 2024: 17,9 → *alta* |
+| Casos | 2.356 | **1.590** | 2024: 1.704 |
+| Detecção /100 mil | 24,64 → *muito alta* | **16,63 → alta** | 2024: 17,9 → *alta* |
+| Municípios hiperendêmicos (≥ 40) | 11 | **7** | |
 
-O Boletim Epidemiológico de Hanseníase define os três indicadores de
-endemicidade (detecção geral, em < 15 anos e grau II) sobre **casos novos**.
+**Decisão (20/set/2026): aplicar a definição do MS.** Vale para os cards
+de casos novos e detecção, o mapa, o ranking, o tooltip, a agregação por
+macro e região de saúde e a série anual — todos leem `MODOENTR = 1` do
+`sinan_landing` (numerador) e a população do `incidence` (denominador); a
+soma dos 185 municípios continua fechando com o estado (teste em
+`tests/paridade`).
 
-**Decisão (18/set/2026):** reproduzir o painel de origem — `casos_total` —
-para a paridade fechar e o painel substituir o deles sem trocar os números
-que a equipe já circula. A definição do MS fica documentada aqui e no
-tooltip do card. Trocar é uma linha em `kpis.calcular` (numerador
-`MODOENTR = 1`, de `sinan_landing`), **mas só para a detecção geral**: as
-taxas 0–14 e o grau II entre casos novos exigem cruzar variáveis, o que os
-agregados não permitem — dependem do microdado (`pedido-microdado.md`).
+**O que continua sobre todas as entradas, por falta de cruzamento na
+extração:** casos e taxa em **0–14**, **grau II**, **curas** (o
+`incidence_0_14` e os `casos_grau_*` não separam modo de entrada) e a
+**série mensal** — canal endêmico e epicurva vêm do `_cache_ts`, que
+também não tem modo de entrada; por isso a soma dos meses de 2024 (2.475)
+fica ~40% acima dos casos novos do ano (1.761), e o gráfico avisa. Tudo
+isso passa a caso novo com o microdado (`pedido-microdado.md`).
 
-**A confirmar com o chefe.** Se a decisão mudar, a §0 deixa de bater nos
-três primeiros cards, de propósito.
+A distância para a origem é conhecida (2.356 − 1.590 = 766) e o teste
+`test_a_divergencia_com_a_origem_continua_registrada` falha se ela sumir
+sem esta seção mudar.
 
 ## 2. Denominador do grau II — reproduzido
 
@@ -89,8 +98,8 @@ A origem reparte os 185 municípios em cinco classes de 37 (quintis) e a
 régua muda a cada ano; ao lado da legenda, uma tabela "regiões por classe"
 repete as faixas com o N — sempre 37. Aqui o mapa abre na **escala de
 endemicidade do MS** (baixa < 2 … hiperendêmica ≥ 40), comparável entre
-anos, e o N entra na própria legenda, onde passa a informar ("11
-hiperendêmicos" em 2025). Quintis e quebras naturais continuam no controle
+anos, e o N entra na própria legenda, onde passa a informar ("7
+hiperendêmicos" em 2025, pela definição do MS de caso novo). Quintis e quebras naturais continuam no controle
 "Cores". Decisão de 18/set/2026, depois de o usuário estranhar os 37.
 
 ## 5. Canal endêmico — cinco anos em vez de três

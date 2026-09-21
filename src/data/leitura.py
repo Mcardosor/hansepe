@@ -477,6 +477,20 @@ def valores_por_geografia(esc: Escopo, metrica: str) -> pd.Series:
         )
         chave, onde, params = "uf", "", []
 
+    if metrica in ("casos", "incid") and esc.doenca == config.HANSENIASE and desce_para_municipio:
+        # Hanseníase: casos novos pela definição do MS (`MODOENTR = 1`),
+        # não `casos_total`, que na extração é toda entrada no registro.
+        # Ver docs/paridade-hanseniase.md §1.
+        pop = conectar().execute(
+            f"SELECT cod_mun6, pop_total FROM read_parquet('{fonte}', hive_partitioning=true){onde}",
+            params,
+        ).fetchdf().set_index("cod_mun6")["pop_total"]
+        novos = casos_novos_por_municipio(esc).set_index("cod_mun6")["casos"]
+        casos = novos.reindex(pop.index).fillna(0.0)
+        if metrica == "casos":
+            return casos
+        return casos / pop.replace(0, pd.NA) * 100_000
+
     if metrica in _COLUNA_DIRETA:
         coluna = _COLUNA_DIRETA[metrica]
         sql = f"SELECT {chave}, {coluna} AS valor FROM read_parquet('{fonte}', hive_partitioning=true){onde}"
@@ -599,6 +613,12 @@ def componentes_municipais(esc: Escopo) -> pd.DataFrame:
     juncao = base.merge(obitos, on="cod_mun6", how="left")
     juncao["obitos"] = juncao["obitos"].fillna(0)
 
+    if esc.doenca == config.HANSENIASE:
+        # Casos novos do MS no lugar de `casos_total` — a mesma troca de
+        # `valores_por_geografia`, para macro e região somarem o mesmo.
+        novos = casos_novos_por_municipio(esc).set_index("cod_mun6")["casos"]
+        juncao["casos"] = juncao["cod_mun6"].map(novos).fillna(0.0)
+
     # Faixa 0–14, para a taxa de detecção infantil por macro e região de
     # saúde sair da soma dos componentes, como as demais.
     fonte14 = caminho(
@@ -646,6 +666,8 @@ def serie_anual(esc: Escopo, metrica: str = "casos") -> pd.DataFrame:
     fonte = caminho(
         "incidence", doenca=config.cod_agregado(esc.doenca), nivel=particao
     )
+    if metrica in ("casos", "incid") and esc.doenca == config.HANSENIASE:
+        return _serie_anual_casos_novos_ms(esc, metrica, fonte, onde, params)
     # Taxa recalculada da soma quando há região: média de taxas municipais
     # pesaria Petrolina igual a um município de dois mil habitantes.
     if esc.municipios and metrica == "incid":
@@ -1075,7 +1097,18 @@ def componentes_de_regiao(esc: Escopo, municipios: list[str]) -> dict:
         codigos,
     ).fetchdf()
 
-    return {**base, **faixa, "classopera": classe}
+    novos = conectar().execute(
+        f"""
+        SELECT sum(n) FROM read_parquet('{landing}', hive_partitioning=true)
+        WHERE variavel = 'MODOENTR' AND sexo = 'TOTAL' AND trim(valor) = ?
+          AND geo_id IN ({marcadores})
+        """,
+        [CASO_NOVO_MS, *codigos],
+    ).fetchone()
+    return {
+        **base, **faixa, "classopera": classe,
+        "casos_novos_ms": float(novos[0]) if novos and novos[0] is not None else 0.0,
+    }
 
 
 def serie_classificacao_operacional(esc: Escopo) -> pd.DataFrame:
@@ -1125,3 +1158,61 @@ def serie_0_14(esc: Escopo) -> pd.DataFrame:
     if onde:
         sql += f" WHERE {onde}"
     return conectar().execute(sql + " GROUP BY ano ORDER BY ano", list(params)).fetchdf()
+
+
+#: Código de `MODOENTR` que o Ministério conta como caso novo. Recidiva (6),
+#: transferências (2–5) e outros reingressos (7) são entradas no registro
+#: ativo, mas não casos novos — e a taxa de detecção é sobre casos novos.
+CASO_NOVO_MS = "1"
+
+
+def casos_novos_por_municipio(esc: Escopo, todos_os_anos: bool = False) -> pd.DataFrame:
+    """Casos novos (`MODOENTR = 1`) por município de residência da UF.
+
+    Colunas ``cod_mun6``, ``ano``, ``casos``. Município sem caso novo no ano
+    não tem linha no `sinan_landing` — quem consome preenche com zero a
+    partir da lista de municípios do `incidence`, ou some do mapa.
+    """
+    particoes = {"doenca": config.cod_landing(esc.doenca), "nivel": "MUN"}
+    if not todos_os_anos:
+        particoes["ano"] = esc.ano
+    fonte = caminho("sinan_landing", **particoes)
+    df = conectar().execute(
+        f"""
+        SELECT geo_id AS cod_mun6, ano, sum(n) AS casos
+        FROM read_parquet('{fonte}', hive_partitioning=true)
+        WHERE variavel = 'MODOENTR' AND sexo = 'TOTAL' AND trim(valor) = ?
+          AND uf = ?
+        GROUP BY geo_id, ano
+        """,
+        [CASO_NOVO_MS, esc.uf],
+    ).fetchdf()
+    df["cod_mun6"] = df["cod_mun6"].map(mun6)
+    return df
+
+
+def casos_novos_ms(esc: Escopo) -> float | None:
+    """Casos novos do recorte pela definição do MS, via `variavel_sinan`
+    (que já sabe de UF, município e região)."""
+    df = variavel_sinan(esc, "MODOENTR")
+    if df.empty:
+        return None
+    return float(df.loc[df["valor"] == CASO_NOVO_MS, "n"].sum())
+
+
+def _serie_anual_casos_novos_ms(esc, metrica, fonte_pop, onde, params) -> pd.DataFrame:
+    """Casos novos do MS por ano — e a taxa sobre a população do `incidence`."""
+    novos = casos_novos_por_municipio(esc, todos_os_anos=True)
+    if esc.municipios:
+        novos = novos[novos["cod_mun6"].isin(esc.municipios)]
+    elif esc.nivel == "MUN":
+        novos = novos[novos["cod_mun6"] == mun6(esc.mun)]
+    por_ano = novos.groupby("ano")["casos"].sum()
+    pop = conectar().execute(
+        f"SELECT ano, sum(pop_total) AS pop FROM read_parquet('{fonte_pop}', hive_partitioning=true)"
+        + (f" WHERE {onde}" if onde else "") + " GROUP BY ano ORDER BY ano",
+        list(params),
+    ).fetchdf().set_index("ano")["pop"]
+    casos = por_ano.reindex(pop.index).fillna(0.0)
+    valor = casos if metrica == "casos" else casos / pop.replace(0, pd.NA) * 100_000
+    return pd.DataFrame({"ano": pop.index, "valor": valor.to_numpy()})

@@ -532,6 +532,14 @@ with direita:
                 )
                 titulo_serie = "Taxa de detecção por ano"
                 rodape = ""
+            if horizonte == "Meses do ano":
+                # A série mensal não separa modo de entrada; os cards, sim.
+                rodape = (rodape + " " if rodape else "") + (
+                    "A série mensal conta todas as entradas no registro "
+                    "(recidivas e transferências inclusive), porque a fonte "
+                    "mensal não traz o modo de entrada — a soma dos meses fica "
+                    "acima dos casos novos do card."
+                )
             st.markdown(ui.titulo_painel(titulo_serie, ajuda=rodape), unsafe_allow_html=True)
             st.altair_chart(figura, width="stretch")
 

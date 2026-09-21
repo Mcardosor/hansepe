@@ -150,5 +150,7 @@ def test_os_sete_cards_aparecem_com_numero() -> None:
     at = _rodar(ano=2025)
     _conferir(at, "cards")
     html = " ".join(m.value for m in at.markdown)
-    for texto in ("24,64", "4,02", "2.356", "78", "135", "82,93", "10,04"):
+    # Casos novos e detecção pela definição do MS (paridade §1); os demais
+    # como na origem.
+    for texto in ("16,63", "4,02", "1.590", "78", "135", "82,93", "10,04"):
         assert texto in html, f"card com {texto} não apareceu"

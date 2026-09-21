@@ -28,23 +28,24 @@ anterior no mesmo território.
 
 | Indicador | Fórmula | Fonte |
 |---|---|---|
-| Taxa de detecção /100 mil | casos novos ÷ população × 100.000 | `incidence` |
+| Taxa de detecção /100 mil | casos novos ÷ população × 100.000 | `sinan_landing` (`MODOENTR = 1`) + `incidence` (população) |
 | Taxa de detecção 0–14 /100 mil | casos de 0 a 14 ÷ população de 0 a 14 × 100.000 | `incidence_0_14` |
-| Casos novos | `casos_total` — entradas no registro ativo no ano | `incidence` |
+| Casos novos | modo de entrada = "caso novo" (`MODOENTR = 1`), a definição do MS | `sinan_landing` |
 | Casos 0–14 | `casos_0_14_total` | `incidence_0_14` |
-| Curas | `casos_cura` — saídas por cura entre os casos do ano | `incidence` |
+| Curas | `casos_cura` — saídas por cura entre todos os casos do ano | `incidence` |
 | Multibacilar (%) | MB ÷ (PB + MB) × 100 | `sinan_landing`, `CLASSOPERA` |
 | Grau II (%) | grau 2 ÷ (grau 0 + grau 1 + grau 2 + não avaliado) × 100 | `incidence`, `casos_grau_*` |
 
 Detalhes que mudam o número:
 
-- **"Casos novos" são todas as entradas no registro ativo** — recidivas,
-  transferências e outros reingressos inclusive. É assim que a extração
-  define `casos_total` para a hanseníase e é assim que o painel de origem
-  exibe. Pela definição do Ministério da Saúde (só modo de entrada "caso
-  novo", `MODOENTR = 1`) PE teria 1.590 casos e 16,6/100 mil em 2025, em
-  vez de 2.356 e 24,64 — uma faixa de endemicidade abaixo. Ver
-  `paridade-hanseniase.md` §1.
+- **Casos novos são os do Ministério** — só o modo de entrada "caso novo";
+  recidivas, transferências e outros reingressos não contam. O painel de
+  origem usa `casos_total`, que na extração é toda entrada no registro, e
+  por isso mostra 2.356 casos e 24,64/100 mil em PE 2025 onde aqui são
+  **1.590 e 16,63** (uma faixa de endemicidade abaixo). Vale para cards,
+  mapa, ranking, agregação regional e série anual. **Não vale** para 0–14,
+  grau II, curas e a série mensal, que a extração não cruza com modo de
+  entrada — ver `paridade-hanseniase.md` §1.
 - **Curas não são coorte.** O tratamento leva 6 (PB) ou 12 (MB) meses, então
   as saídas por cura dos casos diagnosticados no ano corrente são sempre
   poucas (135 em 2025 contra 1.088 em 2024) e sobem nas extrações seguintes.
@@ -77,7 +78,7 @@ Três classificações de cor, escolhidas no controle "Cores":
   detecção geral — baixa < 2, média 2–10, alta 10–20, muito alta 20–40,
   hiperendêmica ≥ 40 por 100 mil — e para 0–14 (< 0,5 · 0,5–2,5 · 2,5–5 ·
   5–10 · ≥ 10). É a única régua que deixa dois anos comparáveis, e a
-  legenda diz quantos municípios caem em cada faixa — em 2025, 11
+  legenda diz quantos municípios caem em cada faixa — em 2025, 7
   hiperendêmicos.
 - **Quintis** (a do painel de origem): um quinto dos municípios em cada cor
   — 37 por classe, sempre, porque é assim que se constrói. A régua é
@@ -100,6 +101,10 @@ volta ao topo.
   na origem — a série mensal vem estratificada por grau.
 - **Todos os anos**: taxa de detecção por ano, 2010–2025.
 - **Epicurva**: casos por mês, 2010–2025, contínua.
+
+Canal e epicurva contam **todas as entradas** no registro (o `_cache_ts`
+não tem modo de entrada): a soma dos meses fica acima dos casos novos do
+ano. O gráfico avisa.
 
 ## Pirâmide etária
 

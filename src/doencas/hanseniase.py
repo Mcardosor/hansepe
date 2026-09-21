@@ -4,11 +4,11 @@ Reconstrói o painel Shiny ``PE_HANSE_06_01`` da equipe parceira (inventário
 em ``docs/inventario-painel-origem.md``). Só constantes: o core lê daqui
 cores, rótulos, ordem dos KPIs, métricas do mapa e variáveis de composição.
 
-**As fórmulas reproduzem o painel de origem**, para a paridade fechar — em
-especial "casos novos" = ``casos_total`` do ``incidence``, que na extração da
-hanseníase conta **todas as entradas** no registro (recidiva, transferência e
-reingresso inclusive). A definição do Ministério (``MODOENTR = 1``) fica
-documentada em ``docs/paridade-hanseniase.md`` como divergência conhecida.
+**Casos novos e taxa de detecção seguem a definição do Ministério**
+(``MODOENTR = 1``), decisão de 20/set/2026 — o painel de origem usa
+``casos_total``, que na extração é toda entrada no registro (recidiva,
+transferência e reingresso inclusive). Os demais números reproduzem a
+origem. Ver ``docs/paridade-hanseniase.md`` §1.
 """
 
 from __future__ import annotations
@@ -42,7 +42,7 @@ CORES = {
 ROTULOS = {
     "casos": "Casos novos",
     "obitos": "Óbitos",
-    "cura": "Curas entre casos novos",
+    "cura": "Curas",
     "cura_pct": "Proporção de cura (%)",
     "pop": "População",
     "incid": "Taxa de detecção (por 100 mil hab.)",
@@ -264,21 +264,28 @@ def grupo_da(codigo: str) -> str:
 #: **denominador** — e onde a conta difere da do Ministério.
 DESCRICOES = {
     "incid": (
-        "Casos novos por 100 mil habitantes, por município de residência. "
-        "Como no painel de origem, 'casos novos' são todas as entradas no "
-        "registro do ano — recidivas e transferências inclusive; pela "
-        "definição do Ministério (só modo de entrada 'caso novo') a taxa "
-        "fica cerca de 25% menor. Ver docs/paridade-hanseniase.md."
+        "Casos novos por 100 mil habitantes, por município de residência — "
+        "a definição do Ministério da Saúde: só o modo de entrada 'caso "
+        "novo'. O painel de origem conta todas as entradas no registro "
+        "(recidivas e transferências inclusive) e por isso mostra uma taxa "
+        "cerca de 30% maior. Ver docs/paridade-hanseniase.md."
     ),
     "taxa_det_0_14": (
         "Casos de 0 a 14 anos por 100 mil habitantes dessa faixa. É o "
         "indicador de transmissão recente: criança com hanseníase significa "
         "contato próximo e contínuo com caso não tratado."
     ),
-    "casos": "Entradas no registro ativo no ano, por município de residência.",
-    "casos_0_14": "Entradas no registro ativo em menores de 15 anos.",
+    "casos": (
+        "Casos novos (modo de entrada 'caso novo') no ano, por município de "
+        "residência. Recidivas, transferências e reingressos não contam."
+    ),
+    "casos_0_14": (
+        "Entradas no registro ativo em menores de 15 anos. Aqui não dá para "
+        "separar caso novo de reingresso — a extração não cruza idade com "
+        "modo de entrada; a diferença é pequena nessa faixa."
+    ),
     "cura": (
-        "Saídas por cura entre os casos diagnosticados no mesmo ano. Não é "
+        "Saídas por cura entre todos os casos do ano. Não é "
         "coorte: o tratamento leva 6 (PB) ou 12 (MB) meses, então o número "
         "do ano corrente é sempre baixo e sobe nas extrações seguintes."
     ),

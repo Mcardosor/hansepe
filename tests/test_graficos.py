@@ -44,7 +44,10 @@ def test_mensal_e_anual_divergem_por_criterio_geografico() -> None:
     mensal = _mensal()["valor"].sum()
     anual = leitura.serie_anual(ESCOPO, "casos").query("ano == 2024")["valor"].iloc[0]
     assert mensal != anual, "se convergiram, revisar o aviso na interface"
-    assert abs(mensal - anual) / anual < 0.01, "divergência maior que o esperado em PE"
+    # Na hanseníase a série anual é de casos novos do MS (1.761 em 2024) e a
+    # mensal do `_cache_ts` é toda entrada no registro (2.475): a distância é
+    # a da paridade §1, ~40%, e não o 1% de residência × notificação.
+    assert 0.3 < (mensal - anual) / anual < 0.5, "distância fora do esperado (MS × todas as entradas)"
 
 
 def test_grafico_mensal_usa_a_cor_da_metrica() -> None:

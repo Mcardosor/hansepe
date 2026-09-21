@@ -6,9 +6,10 @@ Painel de monitoramento da **hanseníase de Pernambuco**, em Streamlit.
 Reconstrução em Python do painel Shiny da equipe parceira
 (`cenariostb.unb.br/PE_HANSE_06_01`, embutido em
 `cenarios.unb.br/pernambuco-hans`), tela a tela — inventário em
-`docs/inventario-painel-origem.md`. **Os números reproduzem o painel de
-origem; a cara também.** Onde a origem diverge do Ministério da Saúde, a
-divergência está em `docs/paridade-hanseniase.md` e no tooltip do card.
+`docs/inventario-painel-origem.md`. **A cara reproduz o painel de origem; os números também, exceto casos
+novos e taxa de detecção, que seguem a definição do Ministério
+(`MODOENTR = 1`) desde 20/set/2026.** Cada divergência está em
+`docs/paridade-hanseniase.md` e no tooltip do card.
 
 Herda o core do painel nacional (`../sinan`: leitores, `Escopo`,
 navegação PE → macro → região de saúde → município, `recortes.py`) e a
@@ -66,8 +67,10 @@ PE) → `src/data/*` → `src/mapa.py` e `src/graficos.py`.
 
 - **Módulos importados não recarregam** no Streamlit: editou `src/`,
   reinicie o servidor.
-- **`casos_total` da hanseníase é toda entrada no registro**, não caso novo
-  (paridade §1). Para TB a mesma coluna já vem filtrada.
+- **`casos_total` da hanseníase é toda entrada no registro**, não caso novo.
+  Casos novos e detecção saem de `leitura.casos_novos_ms` /
+  `casos_novos_por_municipio` (`MODOENTR = 1`); 0–14, grau II, curas e a
+  série mensal continuam sobre todas as entradas (paridade §1).
 - **`/XD data` no robocopy engole `src/data`** — foi assim que a camada de
   dados quase não veio. Mesma armadilha do `/data/` no `.gitignore`.
 - **O SIM para em 2024**: `componentes_municipais` tolera a partição ausente,
