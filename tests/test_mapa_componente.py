@@ -61,3 +61,23 @@ def test_camada_de_geografia_tem_id_fixo_e_transicao() -> None:
     geo = next(c for c in spec["layers"] if c["@@type"] == "GeoJsonLayer")
     assert geo["id"] == "geografia"
     assert geo["transitions"] == {"getFillColor": mapa.TRANSICAO_COR_MS}
+
+
+def test_scripts_dos_componentes_levam_a_versao_no_nome() -> None:
+    """O Streamlit serve `.js` com `Cache-Control: public` e só o `index.html`
+    com `no-cache`. Sem o `?v=<hash>` no `src`, quem já abriu o painel uma
+    vez continua com o JavaScript antigo — foi assim que a correção do clique
+    duplo "não resolveu": o navegador nunca a baixou. O hash tem de ser o do
+    arquivo atual; mudou o JS, muda o carimbo (`scripts/versionar_js.py`)."""
+    import hashlib
+    import re
+
+    from src import grafico_componente, mapa_componente
+
+    for pasta in (mapa_componente.DIRETORIO, grafico_componente.DIRETORIO):
+        html = (pasta / "index.html").read_text(encoding="utf-8")
+        scripts = re.findall(r'<script src="([^"?]+)\?v=([0-9a-f]{8})"></script>', html)
+        assert scripts, f"{pasta.name}: script sem ?v="
+        for nome, versao in scripts:
+            esperado = hashlib.sha1((pasta / nome).read_bytes()).hexdigest()[:8]
+            assert versao == esperado, f"{pasta.name}/{nome}: carimbo {versao} != {esperado} — rode scripts/versionar_js.py"
