@@ -12,11 +12,10 @@ o que está aqui é arranjo de tela e fiação de estado.
 
 from __future__ import annotations
 
-import altair as alt
 import pandas as pd
 import streamlit as st
 
-from src import doencas, graficos, mapa, mapa_componente, resiliencia
+from src import doencas, grafico_componente, graficos, mapa, mapa_componente, resiliencia
 from src.data import canal, geo, leitura, recortes
 from src.data import kpis as calc
 from src.data.escopo import Escopo
@@ -505,11 +504,8 @@ with direita:
 
             if horizonte == "Meses do ano":
                 canal_atual = _canal(nav.ano, nav.nivel, nav.mun, nav.macro, nav.micro, grau)
-                figura = graficos.canal_endemico(
-                    canal_atual,
-                    rotulo=pack.rotulo("incid"),
-                    cor=pack.cor("incid"),
-                    altura=ALTURA_LINHA_1 - 320,
+                figura = grafico_componente.canal_endemico(
+                    canal_atual, rotulo=pack.rotulo("incid"), cor=pack.cor("incid"),
                 )
                 titulo_serie = "Canal endêmico"
                 rodape = ""
@@ -524,9 +520,8 @@ with direita:
                         rodape += f" Em {nav.ano}, **{acima} de 12 meses** ficaram acima do topo da faixa."
             else:
                 serie = _serie_anual(nav.nivel, nav.mun, nav.macro, nav.micro, "incid")
-                figura = graficos.evolucao_anual(
-                    serie, rotulo=pack.rotulo("incid"), cor=pack.cor("incid"),
-                    altura=ALTURA_LINHA_1 - 320, ano=nav.ano,
+                figura = grafico_componente.evolucao_anual(
+                    serie, rotulo=pack.rotulo("incid"), cor=pack.cor("incid"), ano=nav.ano,
                 )
                 titulo_serie = "Taxa de detecção por ano"
                 rodape = ""
@@ -539,15 +534,21 @@ with direita:
                     "acima dos casos novos do card."
                 )
             st.markdown(ui.titulo_painel(titulo_serie, ajuda=rodape), unsafe_allow_html=True)
-            st.altair_chart(figura, width="stretch")
+            # ECharts vivo (`grafico_componente`): a linha do ano e a faixa
+            # deslizam ao mudar o recorte. A `key` muda com o horizonte porque
+            # canal e barras anuais são gráficos diferentes.
+            grafico_componente.desenhar(
+                figura, altura=ALTURA_LINHA_1 - 320,
+                key="canal" if horizonte == "Meses do ano" else "anual",
+            )
 
             st.markdown(ui.titulo_painel("Epicurva por mês"), unsafe_allow_html=True)
-            st.altair_chart(
-                graficos.epicurva(
+            grafico_componente.desenhar(
+                grafico_componente.epicurva(
                     _epicurva(nav.ano, nav.nivel, nav.mun, nav.macro, nav.micro),
                     rotulo="Casos", cor=pack.cor("casos"), ano_em_foco=nav.ano,
                 ),
-                width="stretch",
+                altura=220, key="epicurva",
             )
 
         with aba_ranking, resiliencia.painel("Ranking"):
@@ -564,21 +565,30 @@ with direita:
                 cortes_fixos=pack.cortes_fixos(nav.metrica),
                 decimais=1 if nav.metrica in pack.TAXAS else 0,
             )
-            escolha = alt.selection_point(name="barra", fields=["chave"], on="click")
-            evento_rank = st.altair_chart(
-                graficos.ranking(
+            # ECharts vivo: ao mudar recorte, ano ou métrica as barras deslizam
+            # para o valor e a posição novos.
+            evento_rank = grafico_componente.desenhar(
+                grafico_componente.ranking(
                     tabela,
                     rotulo=pack.rotulo(nav.metrica),
                     cor=pack.cor(nav.metrica),
-                    selecao=escolha,
-                    altura_minima=ALTURA_LINHA_1 - 200,
                     escala=escala_mapa,
+                    selecionado=nav.destacado if nav.recorte == "MUN" else None,
+                    largura_rotulo=graficos.LARGURA_ROTULO_RANKING,
                 ),
-                width="stretch",
-                on_select="rerun",
-                key=f"rank-{nav.ano}-{nav.metrica}-{nav.recorte}-{nav.macro or ''}-{classificacao}-{top_n}",
+                altura=max(
+                    ALTURA_LINHA_1 - 200,
+                    graficos.ALTURA_MIN_RANKING,
+                    graficos.ALTURA_BARRA_RANKING * len(tabela) + graficos.ALTURA_EIXO_RANKING,
+                ),
+                key="ranking",
             )
-            if clicado := graficos.alvo_do_clique(evento_rank, "barra"):
+            clicado, nonce_rank = grafico_componente.alvo_do_clique(
+                evento_rank, st.session_state.get("clique_ranking")
+            )
+            if nonce_rank:
+                st.session_state["clique_ranking"] = nonce_rank
+            if clicado:
                 if nav.recorte == "MACRO" and clicado != nav.macro:
                     nav.entrar_macro(clicado)
                     st.rerun()
@@ -595,12 +605,10 @@ with direita:
                 "Por 100 mil habitantes",
                 help="Desconta o tamanho de cada faixa etária na população.",
             )
-            st.altair_chart(
-                graficos.piramide(
-                    dados_pir, rotulo="Casos", por_100mil=por_100mil,
-                    altura=ALTURA_LINHA_1 - 160,
-                ),
-                width="stretch",
+            grafico_componente.desenhar(
+                grafico_componente.piramide(dados_pir, rotulo="Casos", por_100mil=por_100mil),
+                altura=max(ALTURA_LINHA_1 - 160, 280, 30 * dados_pir["faixa_etaria"].nunique() + 80),
+                key="piramide",
             )
 
 
@@ -622,16 +630,18 @@ AJUDA_TOPICOS = (
 
 def _desenhar_topico(variavel: str, rotulo: str, altura: int) -> None:
     dados = _composicao(nav.ano, nav.nivel, nav.mun, nav.macro, nav.micro, variavel)
-    st.altair_chart(
-        graficos.composicao(
+    # ECharts vivo, uma instância por variável: ao clicar no mapa as barras
+    # das dez deslizam juntas para o recorte novo.
+    grafico_componente.desenhar(
+        grafico_componente.composicao(
             dados,
             rotulo=rotulo,
             cor=pack.cor("prop_mb_pct"),
-            altura=altura,
             largura_rotulo=LARGURA_ROTULO_TOPICO,
             ordem_dos_dados=variavel in pack.VARIAVEIS_NUMERICAS,
         ),
-        width="stretch",
+        altura=altura,
+        key=f"topico-{variavel}",
     )
     if not dados.empty and dados["pct"].isna().all():
         st.caption(
@@ -681,8 +691,8 @@ with resiliencia.painel("Séries anuais"), st.container(border=True, key="cartao
             ),
             unsafe_allow_html=True,
         )
-        st.altair_chart(
-            graficos.barras_empilhadas_com_linha(
+        grafico_componente.desenhar(
+            grafico_componente.barras_empilhadas_com_linha(
                 _serie_classificacao(nav.nivel, nav.mun, nav.macro, nav.micro),
                 barras={"pb": "PB - Paucibacilar", "mb": "MB - Multibacilar"},
                 linha="prop_mb",
@@ -690,7 +700,7 @@ with resiliencia.painel("Séries anuais"), st.container(border=True, key="cartao
                 cores={"pb": "#C4B5FD", "mb": pack.cor("prop_mb_pct")},
                 cor_linha=pack.cor("incid"),
             ),
-            width="stretch",
+            altura=260, key="classificacao-operacional",
         )
     with col_014:
         st.markdown(
@@ -701,17 +711,17 @@ with resiliencia.painel("Séries anuais"), st.container(border=True, key="cartao
             ),
             unsafe_allow_html=True,
         )
-        st.altair_chart(
-            graficos.barras_empilhadas_com_linha(
+        grafico_componente.desenhar(
+            grafico_componente.barras_empilhadas_com_linha(
                 _serie_0_14(nav.nivel, nav.mun, nav.macro, nav.micro),
                 barras={"casos": "Casos (0 a 14)"},
                 linha="taxa",
                 rotulo_linha="Taxa de detecção 0–14 (por 100 mil)",
                 cores={"casos": "#C4B5FD"},
                 cor_linha=pack.cor("taxa_det_0_14"),
-                formato_linha=".2f",
+                casas_linha=2,
             ),
-            width="stretch",
+            altura=260, key="casos-0-14",
         )
 
 
