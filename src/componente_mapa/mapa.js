@@ -81,13 +81,21 @@
     const spec = typeof args.spec === "string" ? JSON.parse(args.spec) : args.spec;
     tooltipSpec = args.tooltip || null;
     const altura = Number(args.altura) || 500;
-    const duracao = Number(args.transicao) || 0;
+    // Quem pediu menos movimento no sistema não recebe voo nem interpolação:
+    // a câmera vai direto ao enquadramento novo.
+    const menosMovimento = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const duracao = menosMovimento ? 0 : (Number(args.transicao) || 0);
 
     raiz.style.height = altura + "px";
     enviar("streamlit:setFrameHeight", { height: altura });
 
     // Só as camadas passam pelo conversor: o resto do spec (views, mapStyle,
     // initialViewState) é decidido aqui.
+    if (menosMovimento) {
+      // A interpolação de cor é declarada no spec (`transitions` da camada,
+      // `src/mapa.py`); apagada aqui, no único lugar que sabe da preferência.
+      (spec.layers || []).forEach((c) => { if (c.transitions) delete c.transitions; });
+    }
     const camadas = converter.convert({ layers: spec.layers || [] }).layers || [];
     const vs = spec.initialViewState || {};
     const alvo = {

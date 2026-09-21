@@ -57,6 +57,10 @@
     const corTexto = (tema && tema.textColor) || "#31333F";
     const fonte = (tema && tema.font) || "system-ui, sans-serif";
     option.textStyle = Object.assign({ color: corTexto, fontFamily: fonte }, option.textStyle || {});
+    // Quem pediu menos movimento no sistema não recebe animação nenhuma.
+    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      option.animation = false;
+    }
     // Tooltip em pt-BR: o Python manda o rótulo e as casas; o formatador é
     // função, e função não viaja em JSON.
     // Duas formas: o item traz o HTML pronto (`data.tooltip`), ou o Python

@@ -185,83 +185,20 @@ def css_base() -> str:
 .kpi-ruim {{ color: {tokens.RUIM}; }}
 .kpi-igual {{ opacity: {tokens.NEUTRO_OPACIDADE}; }}
 
-/* Conteúdo redesenhado entra com fade, em vez de piscar no lugar.
+/* Movimento vive nos componentes, não aqui.
 
-   Isto só passou a fazer sentido depois dos fragmentos. Antes, qualquer
-   clique redesenhava a página inteira e um fade universal seria ruído — tudo
-   pulsando a cada interação. Agora só o painel que mudou é reconstruído, e o
-   fade vira **informação**: marca onde a mudança aconteceu, que é o que a
-   pessoa quer saber ao mexer num controle.
+   Mapa (deck.gl) e gráficos (ECharts) são iframes com instância viva, e a
+   transição entre dois estados acontece lá dentro — voo da câmera, cor
+   interpolando, barra deslizando. O fade de entrada dos gráficos Vega e a
+   tentativa de animar o mapa por CSS saíram junto com o Altair (21/set/2026);
+   o histórico do que foi tentado está em `../tbpe/docs/mapa-clique.md`.
 
-   180ms é curto de propósito. Acima de ~250ms a animação deixa de suavizar e
-   passa a parecer lentidão, e este painel responde em menos de 20ms na camada
-   de dados — não há espera real a disfarçar.
-
-   Sem `transform`: mover o gráfico ao aparecer disputaria com a leitura do
-   eixo. Só opacidade. */
-@keyframes sinan-surgir {{
-  from {{ opacity: 0; }}
-  to   {{ opacity: 1; }}
-}}
-[data-testid="stVegaLiteChart"] {{
-  animation: sinan-surgir .18s ease-out;
-}}
-
-/* O mapa entra crescendo de leve, e só ele.
-
-   Ao navegar de Brasil para um estado, o Streamlit **remonta** o widget: a
-   chave inclui `nivel` e `uf`. O Brasil some e o estado aparece já
-   enquadrado, sem continuidade espacial nenhuma — parece troca de slide, não
-   aproximação.
-
-   O certo seria um `FlyToInterpolator` do deck.gl, mas ele exige que o
-   componente sobreviva à navegação, ou seja, chave estável. E chave estável
-   custa caro aqui: reabre o laço de rerun que a seleção anterior provoca, e
-   quebra o clique repetido que abre o modo detalhe — com a seleção
-   inalterada, o Streamlit nem dispara rerun. Ver `app.py`, na montagem do
-   `st.pydeck_chart`.
-
-   Então o que se faz é perceptivo, não espacial: 0,975 para 1 sugere
-   aprofundamento sem prometer continuidade que não existe. Começou em 0,985 e
-   subiu para 0,975 depois de olhar em tela — sutil demais para se notar.
-   Abaixo de ~0,97 vira "pop" e chama atenção para si; acima de 0,99 não se
-   percebe. O valor é de calibragem visual, não de cálculo.
-
-   Duração maior que a dos gráficos (260ms contra 180ms) porque aqui há uma
-   troca de contexto a acompanhar, não só um redesenho. `ease-out` para a
-   chegada desacelerar, que é o que dá a sensação de assentar. */
-/* **O mapa não anima.** A animação de entrada acima foi removida em
-   24/ago/2026, e o comentário fica porque a razão vale para qualquer tentativa
-   futura.
-
-   Ela era `opacity: 0 -> 1` com escala, e o Streamlit **recria o contêiner e
-   o canvas do deck a cada rerun** — inclusive quando a `key` do widget não
-   muda, medido no navegador. Então a animação de entrada tocava a cada
-   interação, e como o mapa nascia transparente sobre o branco da página, isso
-   lia como piscada.
-
-   O que se queria de verdade era outra coisa: a câmera deslizando da vista
-   antiga para a nova. Isso o deck.gl faz com `transitionDuration` e
-   `FlyToInterpolator`, e o pydeck emite os dois — mas eles não têm efeito
-   aqui, porque sem instância anterior não há de onde partir. `initialViewState`
-   é sempre inicial de fato.
-
-   Entre uma piscada e nenhum movimento, nenhum movimento é melhor: o mapa
-   simplesmente está no lugar novo, e o retorno ao clique é imediato. */
-
+   `prefers-reduced-motion` é respeitado nos dois lugares: aqui, no card de
+   KPI; nos componentes, zerando a duração das transições (`mapa.js`,
+   `grafico.js`). Vestibular é o motivo — animação repetida a cada interação
+   é gatilho, e aqui ela é decoração. */
 @media (prefers-reduced-motion: reduce) {{
   .kpi-card {{ transition: none !important; transform: none !important; }}
-  /* Quem pediu menos movimento não recebe nem o fade. Vestibular é o motivo:
-     animação repetida a cada interação é gatilho, e aqui ela é decoração.
-
-     O mapa continua listado embora já não anime: se alguém reintroduzir
-     movimento ali, ele nasce respeitando a preferência em vez de precisar
-     lembrar deste bloco. */
-  [data-testid="stVegaLiteChart"],
-  [data-testid="stDeckGlJsonChart"] {{
-    animation: none !important;
-    transform: none !important;
-  }}
 }}
 </style>
 """
