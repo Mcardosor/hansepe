@@ -16,7 +16,7 @@ import altair as alt
 import pandas as pd
 import streamlit as st
 
-from src import doencas, graficos, mapa, resiliencia
+from src import doencas, graficos, mapa, mapa_componente, resiliencia
 from src.data import canal, geo, leitura, recortes
 from src.data import kpis as calc
 from src.data.escopo import Escopo
@@ -426,18 +426,12 @@ with esquerda:
                 cortes_fixos=pack.cortes_fixos(nav.metrica),
                 detalhes=_detalhes_tooltip(nav.ano, nav.metrica, recorte_mapa, nav.macro),
             )
-            evento = st.pydeck_chart(
-                desenho,
-                width="stretch",
-                height=ALTURA_MAPA,
-                on_select="rerun",
-                selection_mode="single-object",
-                key=(
-                    f"mapa-{recorte_mapa}-{nav.macro or ''}-{nav.micro or ''}-{nav.mun or ''}"
-                    f"-{'det' if nav.detalhe else ''}-{nav.ano}-{nav.metrica}-{classificacao}"
-                ),
-            )
-            st.components.v1.html(ui.script_travar_zoom(), height=0)
+            # Componente próprio, com `key` **estável**: é o que mantém o deck
+            # vivo entre reruns e faz a câmera voar de um recorte ao outro em
+            # vez de trocar de slide. O clique volta com um nonce; o último
+            # tratado fica em `session_state` para o mesmo evento não navegar
+            # duas vezes. Ver docs/mapa-clique.md, "Transição".
+            evento = mapa_componente.desenhar(desenho, altura=ALTURA_MAPA, key="mapa")
             # O N de cada classe vai na própria legenda. O painel de origem
             # tem uma segunda caixa, "regiões por classe", que repete as faixas
             # só para acrescentar a contagem — em quintis ela é sempre 37, e
@@ -453,7 +447,11 @@ with esquerda:
                 unsafe_allow_html=True,
             )
 
-            alvo = mapa.alvo_do_clique(evento)
+            alvo, nonce = mapa_componente.alvo_do_clique(
+                evento, st.session_state.get("clique_mapa")
+            )
+            if nonce:
+                st.session_state["clique_mapa"] = nonce
             if alvo:
                 if recorte_mapa == "MACRO" and alvo != nav.macro:
                     nav.entrar_macro(alvo)

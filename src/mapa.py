@@ -1016,6 +1016,13 @@ def deck(
 
     camada_geo = pydeck.Layer(
         "GeoJsonLayer",
+        # `id` fixo: é o que deixa o deck.gl reconhecer a camada de um rerun
+        # para o outro e **interpolar a cor** em vez de trocar de vez. Sem
+        # ele o pydeck sorteia um id por instância e toda troca de métrica
+        # é uma camada nova. Só faz efeito no componente próprio
+        # (`src/mapa_componente.py`).
+        id="geografia",
+        transitions={"getFillColor": TRANSICAO_COR_MS},
         data=colecao,
         get_fill_color="properties.cor",
         get_line_color=[255, 255, 255, 150],
@@ -1125,6 +1132,12 @@ def deck(
     # nada mas parece fazer engana quem for mexer depois.
 
     return mapa_deck, escala_
+
+
+#: Duração da interpolação de cor dos polígonos ao trocar métrica, ano ou
+#: classificação, em ms. Mais curta que o voo da câmera (`mapa_componente.
+#: TRANSICAO_MS`): cor que demora a assentar parece dado carregando.
+TRANSICAO_COR_MS = 450
 
 
 #: Espessura das duas linhas do destaque, em pixels. A de baixo e branca e
