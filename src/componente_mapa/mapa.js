@@ -53,6 +53,17 @@
     });
   }
 
+  function devolverFoco() {
+    // No próximo tick, para não atropelar o clique que o deck ainda está
+    // processando (`onClick` vem depois do `pointerup`).
+    setTimeout(() => {
+      if (document.activeElement && document.activeElement !== document.body) {
+        document.activeElement.blur();
+      }
+      try { window.parent.focus(); } catch (e) { /* origem diferente: ignora */ }
+    }, 0);
+  }
+
   function zoom(delta) {
     if (!instancia || !vistaAtual) return;
     instancia.setProps({
@@ -63,8 +74,8 @@
       }),
     });
   }
-  document.getElementById("mais").addEventListener("click", () => zoom(1));
-  document.getElementById("menos").addEventListener("click", () => zoom(-1));
+  document.getElementById("mais").addEventListener("click", () => { zoom(1); devolverFoco(); });
+  document.getElementById("menos").addEventListener("click", () => { zoom(-1); devolverFoco(); });
 
   function render(args) {
     const spec = typeof args.spec === "string" ? JSON.parse(args.spec) : args.spec;
@@ -103,6 +114,15 @@
       });
       quadroAtual = quadro;
       window.__mapa = instancia; // para inspeção no navegador
+      // O foco não pode ficar preso no iframe. Depois de clicar ou arrastar
+      // o mapa, o canvas ficava com o foco do documento, e o clique seguinte
+      // num botão da página só devolvia o foco à página — era preciso clicar
+      // duas vezes na métrica. O canvas não precisa de foco (teclado está
+      // desligado no controller), então ele sai da ordem de tabulação e o
+      // foco volta à página ao soltar o ponteiro.
+      const canvas = raiz.querySelector("canvas");
+      if (canvas) canvas.tabIndex = -1;
+      raiz.addEventListener("pointerup", devolverFoco);
       return;
     }
 
