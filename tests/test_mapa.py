@@ -551,6 +551,32 @@ def test_a_ilha_destacada_cai_dentro_da_area_visivel() -> None:
     assert x0 <= ilha[0] and ilha[2] <= x1, "a ilha vazou da moldura"
 
 
+def test_com_municipio_destacado_o_quadro_da_ilha_nao_e_desenhado() -> None:
+    """Com foco num município, o enquadramento é a vizinhança dele — no meio
+    do estado. O quadro da ilha, posto no canto dessa janela, caía em cima de
+    outros municípios com "fora de escala" escrito sobre a terra (Gameleira,
+    21/set/2026). Sem foco o quadro existe; com foco, não."""
+    import json
+
+    from src import doencas
+
+    pack = doencas.carregar()
+    pe = geo.municipios("PE")
+    valores = pd.Series(1.0, index=pe["cod_mun6"].astype(str))
+
+    def moldura(destacado):
+        desenho, _ = mapa.deck(
+            pe, valores, chave="cod_mun6", rampa=pack.rampa_mapa("incid"),
+            rotulo_metrica="x", coluna_nome="nome_mun", destacado=destacado,
+        )
+        spec = json.loads(desenho.to_json())
+        return [c for c in spec["layers"] if c["@@type"] == "PolygonLayer"]
+
+    assert moldura(None), "sem foco o quadro da ilha tem de existir"
+    gameleira = pe.loc[pe["nome_mun"].str.contains("Gameleira"), "cod_mun6"].iloc[0]
+    assert not moldura(str(gameleira)), "com foco o quadro caía sobre a terra"
+
+
 def test_o_destaque_aproxima_mas_nao_perde_o_contexto() -> None:
     """Acender sem aproximar deixa a pergunta sem resposta.
 

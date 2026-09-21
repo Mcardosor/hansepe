@@ -985,10 +985,16 @@ def deck(
     # Isto invalida a geometria memoizada pelo chamador, que foi feita a
     # partir da camada crua -- por isso o caminho rapido e desligado quando
     # ha ilha. Custa uma conversao a mais so nas UFs que tem uma, hoje so PE.
+    #
+    # **Só sem foco.** Com um município destacado o enquadramento é a
+    # vizinhança dele, no meio do estado — e o quadro da ilha, posto no canto
+    # dessa janela, caía em cima de outros municípios com o rótulo "fora de
+    # escala" por cima da terra. Nesse caso a ilha fica onde está (fora da
+    # tela, a leste); quem quiser vê-la volta ao recorte inteiro.
     moldura = None
-    if ilhas:
+    if ilhas and foco is None:
         dados, moldura = destacar_ilhas(
-            dados, extensao_visivel(foco or limites, altura=altura), ilhas
+            dados, extensao_visivel(limites, altura=altura), ilhas
         )
         geometrias = None
 
