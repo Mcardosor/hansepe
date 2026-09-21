@@ -243,6 +243,29 @@ if "nav" not in st.session_state:
     st.session_state.nav = Navegacao(doenca=pack.DOENCA, ano=_anos()[-1])
 nav: Navegacao = st.session_state.nav
 
+
+def _ao_mudar_metrica() -> None:
+    """Aplica a métrica **antes** do rerun, não durante.
+
+    O seletor fica abaixo dos cards de KPI. Lendo o valor no ponto em que o
+    widget é criado, os cards — já desenhados — realçavam a métrica antiga,
+    e só o rerun seguinte (um segundo clique em qualquer coisa) os punha em
+    dia. O callback roda antes do script, então todo mundo vê o valor novo
+    na mesma passada. Desmarcar o botão (o `segmented_control` permite)
+    devolve a métrica que estava.
+    """
+    escolhida = st.session_state.get("metrica_sel")
+    if escolhida:
+        nav.metrica = escolhida
+    else:
+        st.session_state["metrica_sel"] = nav.metrica
+
+
+if st.session_state.get("metrica_sel") != nav.metrica:
+    # Primeira passada, ou a métrica mudou por outro caminho: o widget
+    # segue `nav`, nunca o contrário.
+    st.session_state["metrica_sel"] = nav.metrica
+
 st.markdown(ui.css_base(), unsafe_allow_html=True)
 st.markdown(ui.css_layout(), unsafe_allow_html=True)
 st.markdown(
@@ -345,13 +368,14 @@ with resiliencia.painel("Controles"), st.container(border=True, key="cartao-cont
             nav.ano = escolhido
             st.rerun()
     with col_metrica:
-        nav.metrica = st.segmented_control(
+        st.segmented_control(
             "Métrica",
             pack.METRICAS_MAPA,
             format_func=pack.rotulo_curto,
-            default=nav.metrica,
+            key="metrica_sel",
+            on_change=_ao_mudar_metrica,
             help="Define o que o mapa pinta e o que o ranking ordena.",
-        ) or nav.metrica
+        )
     with col_recorte:
         # **Sem `key`**: o clique no mapa também move o recorte, e um widget
         # dono do valor entraria em laço com a navegação.

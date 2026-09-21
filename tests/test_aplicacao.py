@@ -154,3 +154,27 @@ def test_os_sete_cards_aparecem_com_numero() -> None:
     # como na origem.
     for texto in ("16,63", "4,02", "1.590", "78", "135", "82,93", "10,04"):
         assert texto in html, f"card com {texto} não apareceu"
+
+
+def test_um_clique_na_metrica_realca_o_card_na_mesma_passada() -> None:
+    """Os cards ficam acima do seletor de métrica. Lendo o valor onde o widget
+    é criado, os cards realçavam a métrica antiga e só o rerun seguinte — um
+    segundo clique em qualquer coisa — os punha em dia (21/set/2026). A
+    métrica muda num callback, antes do script, e o card acompanha no
+    primeiro clique."""
+    import re
+
+    at = AppTest.from_file(APLICACAO, default_timeout=LIMITE).run()
+    from src import doencas
+
+    pack = doencas.carregar()
+    seletor = next(w for w in at.segmented_control if w.label == "Métrica")
+    # `options` do AppTest são os rótulos formatados; o valor é a chave.
+    alvo = next(m for m in pack.METRICAS_MAPA if m != seletor.value)
+    seletor.set_value(alvo).run()
+    assert not at.exception, [e.value for e in at.exception]
+    assert at.session_state.nav.metrica == alvo
+    html = " ".join(m.value for m in at.markdown)
+    cards = re.findall(r'class="kpi-card is-selected[^"]*"(.{0,400})', html)
+    assert len(cards) == 1
+    assert pack.rotulo_curto(alvo) in cards[0]
