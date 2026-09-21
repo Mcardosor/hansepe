@@ -123,6 +123,22 @@
       const canvas = raiz.querySelector("canvas");
       if (canvas) canvas.tabIndex = -1;
       raiz.addEventListener("pointerup", devolverFoco);
+      // O realce de hover (`autoHighlight`) ficava **preso** no último
+      // polígono sob o cursor quando o mouse saía do iframe — o deck só o
+      // apaga num `pointerleave` do canvas, que na borda do iframe nem sempre
+      // chega. Fernando de Noronha, no canto por onde o cursor sai para os
+      // controles, era o caso de sempre. Ao sair, o realce é limpo à mão.
+      const limparRealce = () => {
+        try {
+          instancia.layerManager.getLayers().forEach((camada) => {
+            if (camada.props.autoHighlight) camada.updateAutoHighlight({ picked: false, color: null });
+          });
+          instancia.redraw("realce limpo");
+        } catch (e) { /* API interna mudou: fica o comportamento antigo */ }
+      };
+      document.documentElement.addEventListener("pointerleave", limparRealce);
+      document.documentElement.addEventListener("mouseleave", limparRealce);
+      window.addEventListener("blur", limparRealce);
       return;
     }
 
