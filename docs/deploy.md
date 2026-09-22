@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Público | `https://painel.cenarios.unb.br/cenarios/hansepe/` |
-| Direto, por VPN | `http://10.20.10.64:8510/cenarios/hansepe/` |
+| Direto, por VPN | porta 8510 na VM dos painéis (`ssh cenarios-vm`) |
 | Pasta na VM | `~/hansepe` |
 | Dados | volume de `~/dashboard-sinan-pe/data` — a mesma extração do painel nacional; nada é copiado |
 

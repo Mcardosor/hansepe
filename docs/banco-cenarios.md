@@ -1,6 +1,8 @@
 # Banco `cenarios_ai`
 
-PostgreSQL 14 em `10.20.10.107:5432`, acessível por VPN. Contém o SINAN bruto,
+PostgreSQL 14 na rede interna do projeto, porta 5432, acessível por VPN
+(o endereço está no `.env` de quem tem acesso, não aqui: o repositório é
+público). Contém o SINAN bruto,
 além de SIM, SIH e SINASC.
 
 **Serve para investigação, não para a aplicação.** O dashboard lê dos parquets,

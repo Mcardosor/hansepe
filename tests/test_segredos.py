@@ -16,9 +16,13 @@ from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parents[1]
 
-#: Chaves do modelo que precisam ficar vazias. `CENARIOS_HOST` e as demais têm
-#: valor de propósito — são endereço, não segredo.
-CHAVES_SECRETAS = ("CENARIOS_USER", "CENARIOS_PASSWORD")
+#: Chaves do modelo que precisam ficar vazias.
+#:
+#: `CENARIOS_HOST` entrou na lista em 22/set/2026, quando o repositório virou
+#: público: o endereço não é segredo (a rede só existe atrás da VPN), mas
+#: descrever a topologia interna num repositório aberto é inventário de graça
+#: para quem procura alvo. Quem precisa dele tem o `.env`.
+CHAVES_SECRETAS = ("CENARIOS_HOST", "CENARIOS_USER", "CENARIOS_PASSWORD")
 
 
 def test_o_modelo_de_env_nao_tem_credencial_preenchida() -> None:
