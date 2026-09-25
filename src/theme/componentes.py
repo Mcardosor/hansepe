@@ -705,6 +705,12 @@ def css_layout() -> str:
   background: color-mix(in srgb, currentColor 4%, Canvas 96%);
 }}
 .quadro-parametros-titulo {{ font-weight: 700; margin-bottom: 4px; }}
+.parametros-linha {{
+  font-family: var(--fonte);
+  font-size: {tokens.TEXTO_XS};
+  opacity: .72;
+  padding: 2px 0;
+}}
 .quadro-parametros ul {{ margin: 0; padding: 0; list-style: none; }}
 .quadro-parametros-fonte {{ margin-top: 8px; opacity: .62; }}
 
@@ -980,6 +986,21 @@ def painel_vazio(titulo: str, aviso: str, *, mapa: bool = False) -> str:
     return (
         f'<div class="sinan-painel {variante} sinan-painel-vazio">'
         f"<div><strong>{escape(titulo)}</strong><br>{escape(aviso)}</div></div>"
+    )
+
+
+def parametros_em_linha(titulo: str, linhas) -> str:
+    """A mesma régua do `quadro_parametros`, deitada numa linha só.
+
+    Existe porque a caixa vertical multiplicada fica pesada: na seção de
+    qualidade são quatro indicadores, e três dividem a mesma régua — o
+    quadro aparecia três vezes idêntico embaixo de cards que já dizem
+    "Regular". Deitada e agrupada, a régua informa sem gritar.
+    """
+    itens = " · ".join(escape(linha) for linha in linhas)
+    return (
+        f'<div class="parametros-linha">'
+        f"<b>{escape(titulo)}</b> &nbsp;{itens}</div>"
     )
 
 

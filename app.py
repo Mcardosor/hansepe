@@ -707,9 +707,20 @@ with resiliencia.painel("Indicadores de qualidade"), st.container(
     ):
         with coluna:
             _card(metrica, atual, anterior)
-            # Cada um tem régua própria — a do abandono é ao contrário das
-            # outras três —, então o quadro vai sob o card a que pertence.
-            _quadro(metrica)
+
+    # Uma linha por régua, e não um quadro por card: três dos quatro
+    # indicadores usam a mesma (Bom ≥ 90%), e repeti-la embaixo de cards que
+    # já dizem "Regular" enchia meia tela. O agrupamento é pelo texto: se
+    # um dia uma régua mudar, ela se separa sozinha.
+    reguas: dict[tuple[str, ...], list[str]] = {}
+    for metrica in pack.INDICADORES_QUALIDADE:
+        if texto := pack.texto_parametros(metrica):
+            reguas.setdefault(texto[1], []).append(pack.rotulo_curto(metrica))
+    for linhas, metricas in reguas.items():
+        st.markdown(
+            ui.parametros_em_linha(" · ".join(metricas), linhas),
+            unsafe_allow_html=True,
+        )
 
     # Coorte aberta: dizer **por que** três dos quatro estão vazios. Sem
     # isto o card em branco parece defeito, e o número que estava ali antes
