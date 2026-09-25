@@ -58,6 +58,10 @@ Detalhes que mudam o número:
   total dá 9,3%; sobre os avaliados (grau 0, 1 e 2), que é a regra do MS,
   dá 12,0%.
 - **Multibacilar** exclui os sem classificação (1 em 2.356).
+- **O quadro de parâmetros aparece ao lado do gráfico**, como no boletim, e
+  o texto é citação do documento — "Regular =10-25%" está assim lá. Na
+  detecção geral ele só acompanha a **vista anual**: a régua é do
+  coeficiente do ano, e no canal endêmico os valores são mensais.
 - **Os parâmetros de classificação são os do boletim estadual** — detecção
   geral, detecção < 15 anos, GIF II, cura, abandono, contatos e GIF
   avaliado. Conferidos um a um contra os Gráficos 1, 2 e 10 a 13 em

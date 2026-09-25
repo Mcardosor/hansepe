@@ -12,6 +12,8 @@ o que está aqui é arranjo de tela e fiação de estado.
 
 from __future__ import annotations
 
+import contextlib
+
 import pandas as pd
 import streamlit as st
 
@@ -312,6 +314,23 @@ if (meses := _meses_com_dado(nav.ano)) < 12:
     )
 
 
+def _quadro(metrica: str, fonte: bool = False) -> None:
+    """O quadro de parâmetros do boletim, quando a métrica tem um.
+
+    Vai ao lado do gráfico, como no documento: foi o pedido da reunião de
+    22/set/2026 — a régua precisa estar junto do número, não só na legenda
+    do mapa.
+    """
+    if texto := pack.texto_parametros(metrica):
+        titulo, linhas = texto
+        st.markdown(
+            ui.quadro_parametros(
+                titulo, linhas, fonte=pack.FONTE_PARAMETROS if fonte else ""
+            ),
+            unsafe_allow_html=True,
+        )
+
+
 def _card(metrica: str, atual, anterior) -> None:
     """Um card de KPI. Os da faixa realçam a métrica ativa do mapa, como na
     origem; os de proporção levam o nome inteiro e não têm ícone, como lá."""
@@ -566,13 +585,24 @@ with direita:
                     "acima dos casos novos do card."
                 )
             st.markdown(ui.titulo_painel(titulo_serie, ajuda=rodape), unsafe_allow_html=True)
-            # ECharts vivo (`grafico_componente`): a linha do ano e a faixa
-            # deslizam ao mudar o recorte. A `key` muda com o horizonte porque
-            # canal e barras anuais são gráficos diferentes.
-            grafico_componente.desenhar(
-                figura, altura=ALTURA_LINHA_1 - 320,
-                key="canal" if horizonte == "Meses do ano" else "anual",
-            )
+            # O quadro de parâmetros à direita, como no boletim — **só na
+            # vista anual**. A régua é do coeficiente anual; no canal os
+            # valores são mensais (2 por 100 mil em PE), e pô-la ali faria
+            # o estado parecer "Baixo" doze vezes por ano.
+            anual = horizonte != "Meses do ano"
+            colunas = st.columns([3, 2], vertical_alignment="top") if anual else None
+            grafico = colunas[0] if anual else contextlib.nullcontext()
+            with grafico:
+                # ECharts vivo (`grafico_componente`): a linha do ano e a faixa
+                # deslizam ao mudar o recorte. A `key` muda com o horizonte
+                # porque canal e barras anuais são gráficos diferentes.
+                grafico_componente.desenhar(
+                    figura, altura=ALTURA_LINHA_1 - 320,
+                    key="canal" if horizonte == "Meses do ano" else "anual",
+                )
+            if anual:
+                with colunas[1]:
+                    _quadro("incid")
 
             st.markdown(ui.titulo_painel("Epicurva por mês"), unsafe_allow_html=True)
             grafico_componente.desenhar(
@@ -677,6 +707,9 @@ with resiliencia.painel("Indicadores de qualidade"), st.container(
     ):
         with coluna:
             _card(metrica, atual, anterior)
+            # Cada um tem régua própria — a do abandono é ao contrário das
+            # outras três —, então o quadro vai sob o card a que pertence.
+            _quadro(metrica)
 
     # Coorte aberta: dizer **por que** três dos quatro estão vazios. Sem
     # isto o card em branco parece defeito, e o número que estava ali antes
@@ -793,18 +826,22 @@ with resiliencia.painel("Séries anuais"), st.container(border=True, key="cartao
             ),
             unsafe_allow_html=True,
         )
-        grafico_componente.desenhar(
-            grafico_componente.barras_empilhadas_com_linha(
-                _serie_0_14(nav.nivel, nav.mun, nav.macro, nav.micro),
-                barras={"casos": "Casos (0 a 14)"},
-                linha="taxa",
-                rotulo_linha="Taxa de detecção 0–14 (por 100 mil)",
-                cores={"casos": "#C4B5FD"},
-                cor_linha=pack.cor("taxa_det_0_14"),
-                casas_linha=2,
-            ),
-            altura=260, key="casos-0-14",
-        )
+        grafico_014, parametros_014 = st.columns([3, 2], vertical_alignment="top")
+        with grafico_014:
+            grafico_componente.desenhar(
+                grafico_componente.barras_empilhadas_com_linha(
+                    _serie_0_14(nav.nivel, nav.mun, nav.macro, nav.micro),
+                    barras={"casos": "Casos (0 a 14)"},
+                    linha="taxa",
+                    rotulo_linha="Taxa de detecção 0–14 (por 100 mil)",
+                    cores={"casos": "#C4B5FD"},
+                    cor_linha=pack.cor("taxa_det_0_14"),
+                    casas_linha=2,
+                ),
+                altura=260, key="casos-0-14",
+            )
+        with parametros_014:
+            _quadro("taxa_det_0_14")
 
 
 st.caption(

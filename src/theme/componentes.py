@@ -691,6 +691,23 @@ def css_layout() -> str:
 }}
 .mapa-legenda-item {{ display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }}
 .mapa-legenda-item em {{ font-style: italic; opacity: .8; }}
+/* --- Quadro de parâmetros ao lado do gráfico ---------------------------
+   Reproduz a caixinha do boletim: título em negrito e uma linha por faixa,
+   sem marcador, alinhada ao topo do gráfico vizinho — que é onde ela está no
+   documento impresso. */
+.quadro-parametros {{
+  font-family: var(--fonte);
+  font-size: {tokens.TEXTO_XS};
+  line-height: 1.6;
+  padding: 10px 12px;
+  border-radius: {tokens.RAIO_PAINEL};
+  border: 1px solid color-mix(in srgb, currentColor 14%, transparent);
+  background: color-mix(in srgb, currentColor 4%, Canvas 96%);
+}}
+.quadro-parametros-titulo {{ font-weight: 700; margin-bottom: 4px; }}
+.quadro-parametros ul {{ margin: 0; padding: 0; list-style: none; }}
+.quadro-parametros-fonte {{ margin-top: 8px; opacity: .62; }}
+
 .mapa-legenda-item i {{
   width: 14px;
   height: 14px;
@@ -963,4 +980,23 @@ def painel_vazio(titulo: str, aviso: str, *, mapa: bool = False) -> str:
     return (
         f'<div class="sinan-painel {variante} sinan-painel-vazio">'
         f"<div><strong>{escape(titulo)}</strong><br>{escape(aviso)}</div></div>"
+    )
+
+
+def quadro_parametros(titulo: str, linhas, fonte: str = "") -> str:
+    """Quadro de parâmetros ao lado do gráfico, como no boletim estadual.
+
+    O boletim põe uma caixinha à direita de cada gráfico dizendo em que faixa
+    o indicador cai — é o que a equipe pediu em 22/set/2026, e o que permite
+    ler o gráfico sem decorar a régua. O texto é **citação**: vem de
+    `doencas.hanseniase.TEXTO_PARAMETROS`, não é gerado dos cortes.
+    """
+    itens = "".join(f"<li>{escape(linha)}</li>" for linha in linhas)
+    rodape = (
+        f'<div class="quadro-parametros-fonte">{escape(fonte)}</div>' if fonte else ""
+    )
+    return (
+        f'<div class="quadro-parametros">'
+        f'<div class="quadro-parametros-titulo">{escape(titulo)}</div>'
+        f"<ul>{itens}</ul>{rodape}</div>"
     )

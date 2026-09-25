@@ -72,6 +72,62 @@ FONTE_PARAMETROS = (
     "SES-PE/SEVSAP, 2025 (dados tabulados em 16/04/2025)"
 )
 
+#: Os quadros de parâmetros do boletim, **palavra por palavra**, para irem
+#: ao lado do gráfico como lá. Título e linhas na ordem em que o boletim
+#: escreve — do mais grave para o menos, o contrário da legenda do mapa.
+#:
+#: Copiar o texto em vez de gerá-lo a partir de `CORTES_FIXOS` é deliberado:
+#: é citação de documento. O teste de paridade confere que os dois dizem a
+#: mesma coisa, então divergir exige mexer nos dois lugares.
+TEXTO_PARAMETROS: dict[str, tuple[str, tuple[str, ...]]] = {
+    "incid": (
+        "Coeficiente de detecção geral",
+        (
+            "Hiperendêmico: >40,0/100 mil hab.",
+            "Muito alto: 20,00 a 39,99/100 mil hab.",
+            "Alto: 10,00 a 19,99/100 mil hab.",
+            "Médio: 2,00 a 9,99/100 mil hab.",
+            "Baixo: < 2,00/100 mil hab.",
+        ),
+    ),
+    "taxa_det_0_14": (
+        "Coeficiente de detecção <15 anos",
+        (
+            "Hiperendêmico: ≥10,00 por 100 mil hab.",
+            "Muito alto: 5,00 a 9,99 por 100 mil hab.",
+            "Alto: 2,50 a 4,99 por 100 mil hab.",
+            "Médio: 0,50 a 2,49 por 100 mil hab.",
+            "Baixo: < 0,50 por 100 mil hab.",
+        ),
+    ),
+    "prop_grau2_pct": (
+        "% GIF II",
+        ("Baixo < 5%", "Médio 5 a 9,99%", "Alto ≥ 10%"),
+    ),
+    "cura_pct": (
+        "% Cura",
+        ("Bom ≥ 90%", "Regular ≥ 75 a 89,9%", "Precário < 75%"),
+    ),
+    "abandono_pct": (
+        "% Abandono",
+        ("Bom < 10 %", "Regular =10-25%", "Precário > 25%"),
+    ),
+    "contatos_pct": (
+        "% Contatos examinados",
+        ("Bom ≥ 90%", "Regular ≥ 75 a 89,9%", "Precário < 75%"),
+    ),
+    "gif_avaliado_pct": (
+        "% Grau de incapacidade",
+        ("Bom ≥ 90%", "Regular ≥ 75 a 89,9%", "Precário < 75%"),
+    ),
+}
+
+
+def texto_parametros(metrica: str) -> tuple[str, tuple[str, ...]] | None:
+    """(título, linhas) do quadro do boletim, ou ``None`` quando não há."""
+    return TEXTO_PARAMETROS.get(metrica)
+
+
 #: Os quatro indicadores de qualidade do programa, na ordem da Tabela 2 do
 #: boletim. Não entram na faixa de KPIs nem no mapa: têm seção própria.
 INDICADORES_QUALIDADE = (

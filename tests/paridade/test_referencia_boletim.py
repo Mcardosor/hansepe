@@ -61,13 +61,31 @@ def _pe(ano: int):
 @pytest.mark.parametrize("metrica", sorted(REFERENCIA["parametros"]))
 def test_cortes_sao_os_do_boletim(metrica: str):
     esperado = REFERENCIA["parametros"][metrica]
-    assert list(pack.cortes_fixos(metrica)) == esperado["cortes"], esperado["texto"]
+    assert list(pack.cortes_fixos(metrica)) == esperado["cortes"], esperado["quadro"]
 
 
 @pytest.mark.parametrize("metrica", sorted(REFERENCIA["parametros"]))
 def test_nomes_das_classes_sao_os_do_boletim(metrica: str):
     esperado = REFERENCIA["parametros"][metrica]
-    assert list(pack.nomes_fixos(metrica)) == esperado["nomes"], esperado["texto"]
+    assert list(pack.nomes_fixos(metrica)) == esperado["nomes"], esperado["quadro"]
+
+
+@pytest.mark.parametrize("metrica", sorted(REFERENCIA["parametros"]))
+def test_quadro_repete_o_texto_do_boletim(metrica: str):
+    """O quadro que vai ao lado do gráfico é **citação** do documento.
+
+    Pedido da reunião de 22/set/2026: a régua ao lado do gráfico, como no
+    boletim. Gerar o texto a partir dos cortes pareceria mais limpo e
+    perderia o ponto — "Regular =10-25%" está assim lá, com o sinal de igual
+    e sem espaço. Este teste prende a transcrição.
+    """
+    titulo, linhas = pack.texto_parametros(metrica)
+    assert [titulo, *linhas] == REFERENCIA["parametros"][metrica]["quadro"]
+
+
+def test_todo_indicador_de_qualidade_tem_quadro():
+    for metrica in pack.INDICADORES_QUALIDADE:
+        assert pack.texto_parametros(metrica) is not None, metrica
 
 
 @pytest.mark.parametrize(
