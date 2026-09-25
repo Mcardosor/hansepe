@@ -176,9 +176,14 @@ TAXAS = frozenset(
 )
 
 #: Rampa roxa do painel de origem, para as taxas de detecção.
+#:
+#: O primeiro tom era ``#EDE9FE``, quase branco: no tema claro os municípios
+#: de classe "Baixo" sumiam no fundo da página e o mapa parecia furado.
+#: A rampa foi levantada em 25/set/2026 para começar num lilás que se lê
+#: sobre branco, mantendo a progressão até o roxo quase preto do topo.
 _ROXOS = (
-    "#EDE9FE", "#C4B5FD", "#A78BFA", "#8B5CF6",
-    "#7C3AED", "#5B21B6", "#2D1B69",
+    "#DCD3FA", "#C7B8F7", "#AE99F2", "#9173E8",
+    "#7A56DA", "#5B34B4", "#3B1E7A",
 )
 
 PALETA_MAPA = {

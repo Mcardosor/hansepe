@@ -331,6 +331,12 @@ def _quadro(metrica: str, fonte: bool = False) -> None:
         )
 
 
+def _regua(metrica: str) -> None:
+    """A mesma régua do `_quadro`, deitada sob o gráfico."""
+    if texto := pack.texto_parametros(metrica):
+        st.markdown(ui.parametros_em_linha(*texto), unsafe_allow_html=True)
+
+
 def _card(metrica: str, atual, anterior) -> None:
     """Um card de KPI. Os da faixa realçam a métrica ativa do mapa, como na
     origem; os de proporção levam o nome inteiro e não têm ícone, como lá."""
@@ -493,6 +499,7 @@ with esquerda:
                     pack.rotulo(nav.metrica),
                     contagem=contagem,
                     nomes=pack.nomes_fixos(nav.metrica) if classificacao == "FIXA" else None,
+                    unidade=UNIDADE_RECORTE[recorte_mapa].capitalize(),
                 ),
                 unsafe_allow_html=True,
             )
@@ -590,7 +597,7 @@ with direita:
             # valores são mensais (2 por 100 mil em PE), e pô-la ali faria
             # o estado parecer "Baixo" doze vezes por ano.
             anual = horizonte != "Meses do ano"
-            colunas = st.columns([3, 2], vertical_alignment="top") if anual else None
+            colunas = st.columns([7, 3], vertical_alignment="top") if anual else None
             grafico = colunas[0] if anual else contextlib.nullcontext()
             with grafico:
                 # ECharts vivo (`grafico_componente`): a linha do ano e a faixa
@@ -837,22 +844,23 @@ with resiliencia.painel("Séries anuais"), st.container(border=True, key="cartao
             ),
             unsafe_allow_html=True,
         )
-        grafico_014, parametros_014 = st.columns([3, 2], vertical_alignment="top")
-        with grafico_014:
-            grafico_componente.desenhar(
-                grafico_componente.barras_empilhadas_com_linha(
-                    _serie_0_14(nav.nivel, nav.mun, nav.macro, nav.micro),
-                    barras={"casos": "Casos (0 a 14)"},
-                    linha="taxa",
-                    rotulo_linha="Taxa de detecção 0–14 (por 100 mil)",
-                    cores={"casos": "#C4B5FD"},
-                    cor_linha=pack.cor("taxa_det_0_14"),
-                    casas_linha=2,
-                ),
-                altura=260, key="casos-0-14",
-            )
-        with parametros_014:
-            _quadro("taxa_det_0_14")
+        grafico_componente.desenhar(
+            grafico_componente.barras_empilhadas_com_linha(
+                _serie_0_14(nav.nivel, nav.mun, nav.macro, nav.micro),
+                barras={"casos": "Casos (0 a 14)"},
+                linha="taxa",
+                rotulo_linha="Taxa de detecção 0–14 (por 100 mil)",
+                cores={"casos": "#C4B5FD"},
+                cor_linha=pack.cor("taxa_det_0_14"),
+                casas_linha=2,
+            ),
+            altura=260, key="casos-0-14",
+        )
+        # Em linha sob o gráfico, e não em caixa ao lado: aqui os dois
+        # gráficos do rodapé dividem a largura, e a caixa deixaria um
+        # mais estreito que o outro sem motivo. No gráfico anual de
+        # detecção, que tem coluna só para ele, a caixa continua.
+        _regua("taxa_det_0_14")
 
 
 st.caption(

@@ -1031,8 +1031,12 @@ def deck(
         transitions={"getFillColor": TRANSICAO_COR_MS},
         data=colecao,
         get_fill_color="properties.cor",
-        get_line_color=[255, 255, 255, 150],
-        line_width_min_pixels=0.6,
+        # Divisa em lilás acinzentado, não em branco: o branco só desenhava
+        # o município sobre os tons escuros, e nas classes claras a malha
+        # virava uma mancha só. Este tom fica no meio da rampa, então
+        # contrasta com os dois extremos dela.
+        get_line_color=[124, 109, 168, 205],
+        line_width_min_pixels=0.8,
         stroked=True,
         filled=True,
         # `pickable` é o que faz o clique existir; `auto_highlight` dá o
@@ -1258,14 +1262,20 @@ def legenda(
     titulo: str,
     contagem: pd.Series | None = None,
     nomes: tuple[str, ...] | None = None,
+    unidade: str = "",
 ) -> str:
     """Legenda em HTML — o deck.gl não desenha uma.
 
     ``contagem`` (rótulo → n) põe ao lado de cada faixa quantas unidades
     caem nela — substitui a tabela "regiões por classe" do painel de origem,
     que repetia as faixas da legenda só para acrescentar o N. ``nomes`` dá
-    a cada classe o nome que a régua oficial usa ("baixa", "hiperendêmica"),
+    a cada classe o nome que a régua oficial usa ("Baixo", "Hiperendêmico"),
     quando a escala é fixa e tem nome.
+
+    ``unidade`` nomeia o que está sendo contado — sem isso o número fica
+    solto ao lado da faixa e parece um terceiro valor, do tipo "< 2 · Baixo ·
+    51". Com ele, o cabeçalho diz "municípios por faixa" e a contagem entra
+    entre parênteses, que é como se lê um total.
     """
     from html import escape
 
@@ -1273,9 +1283,10 @@ def legenda(
         partes = [escape(r)]
         if nomes and i < len(nomes):
             partes.append(f"<em>{escape(nomes[i])}</em>")
+        corpo = " &nbsp;".join(partes)
         if contagem is not None:
-            partes.append(f"<b>{int(contagem.get(r, 0))}</b>")
-        return " &nbsp;".join(partes)
+            corpo += f' <span class="mapa-legenda-n">({int(contagem.get(r, 0))})</span>'
+        return corpo
 
     rotulos = [*escala.rotulos, ROTULO_SEM_DADO]
     itens = "".join(
@@ -1286,9 +1297,14 @@ def legenda(
         # "sem dado" só aparece quando há alguém sem dado.
         and (r != ROTULO_SEM_DADO or contagem is None or contagem.get(r, 0))
     )
+    dica = (
+        f'<span class="mapa-legenda-dica">{escape(unidade)} por faixa</span>'
+        if unidade and contagem is not None
+        else ""
+    )
     return (
         f'<div class="mapa-legenda">'
-        f'<div class="mapa-legenda-titulo">{escape(titulo)}</div>{itens}</div>'
+        f'<div class="mapa-legenda-titulo">{escape(titulo)}{dica}</div>{itens}</div>'
     )
 
 

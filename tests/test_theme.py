@@ -158,3 +158,30 @@ def test_todo_kpi_renderiza(chave: str) -> None:
     html = c.kpi_card(pack.rotulo(chave), "1,0", cor=pack.cor(chave))
     assert pack.rotulo(chave) in html or "&" in html
 
+
+
+def test_a_unidade_repetida_sobe_para_o_titulo() -> None:
+    """O boletim escreve "por 100 mil hab." nas cinco faixas; na caixa do
+    painel isso vira cinco linhas quebradas dizendo o mesmo. A citação
+    literal fica no pack — aqui só a exibição enxuga."""
+    from src.theme.componentes import _fatorar_unidade
+
+    titulo, linhas = _fatorar_unidade(
+        "Coeficiente de detecção geral",
+        (
+            "Hiperendêmico: >40,0/100 mil hab.",
+            "Muito alto: 20,00 a 39,99/100 mil hab.",
+            "Baixo: < 2,00/100 mil hab.",
+        ),
+    )
+    assert titulo == "Coeficiente de detecção geral (por 100 mil hab.)"
+    assert linhas == ("Hiperendêmico: >40,0", "Muito alto: 20,00 a 39,99", "Baixo: < 2,00")
+
+
+def test_sufixo_curto_nao_e_fatorado() -> None:
+    """"Bom ≥ 90%" e "Precário < 75%" só compartilham o `%`, que é parte do
+    número e não uma unidade a destacar."""
+    from src.theme.componentes import _fatorar_unidade
+
+    original = ("Bom ≥ 90%", "Regular ≥ 75 a 89,9%", "Precário < 75%")
+    assert _fatorar_unidade("% Cura", original) == ("% Cura", original)

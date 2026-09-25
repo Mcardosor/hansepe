@@ -682,7 +682,12 @@ def css_layout() -> str:
   font-size: {tokens.TEXTO_XS};
   color: inherit;
 }}
+.mapa-legenda-n {{ opacity: .62; font-variant-numeric: tabular-nums; }}
+.mapa-legenda-dica {{ font-weight: 400; opacity: .62; }}
 .mapa-legenda-titulo {{
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
   grid-column: 1 / -1;
   font-size: {tokens.TEXTO_SM};
   font-weight: 700;
@@ -989,6 +994,36 @@ def painel_vazio(titulo: str, aviso: str, *, mapa: bool = False) -> str:
     )
 
 
+def _fatorar_unidade(titulo: str, linhas: tuple[str, ...]):
+    """Tira a unidade repetida das linhas e põe no título, uma vez só.
+
+    O boletim escreve "por 100 mil hab." em cada uma das cinco faixas, o que
+    num documento impresso passa e numa caixa estreita vira cinco linhas
+    quebradas dizendo a mesma coisa. Fatorar aqui, e não na transcrição,
+    deixa `TEXTO_PARAMETROS` ser citação literal do documento.
+    """
+    if len(linhas) < 2:
+        return titulo, linhas
+    invertidas = [linha[::-1] for linha in linhas]
+    comum = invertidas[0]
+    for outra in invertidas[1:]:
+        limite = min(len(comum), len(outra))
+        corte = next(
+            (i for i in range(limite) if comum[i] != outra[i]), limite
+        )
+        comum = comum[:corte]
+    unidade = comum[::-1].strip()
+    # Só vale quando o que se repete é de fato uma unidade — "% " e um
+    # espaço não justificam mexer no texto.
+    if len(unidade) < 6 or not any(c.isalpha() for c in unidade):
+        return titulo, linhas
+    enxutas = tuple(linha[: len(linha) - len(comum)].rstrip(" /") for linha in linhas)
+    rotulo = unidade.lstrip("/ ")
+    if rotulo.startswith("100"):
+        rotulo = f"por {rotulo}"
+    return f"{titulo} ({rotulo})", enxutas
+
+
 def parametros_em_linha(titulo: str, linhas) -> str:
     """A mesma régua do `quadro_parametros`, deitada numa linha só.
 
@@ -997,6 +1032,7 @@ def parametros_em_linha(titulo: str, linhas) -> str:
     quadro aparecia três vezes idêntico embaixo de cards que já dizem
     "Regular". Deitada e agrupada, a régua informa sem gritar.
     """
+    titulo, linhas = _fatorar_unidade(titulo, tuple(linhas))
     itens = " · ".join(escape(linha) for linha in linhas)
     return (
         f'<div class="parametros-linha">'
@@ -1010,8 +1046,10 @@ def quadro_parametros(titulo: str, linhas, fonte: str = "") -> str:
     O boletim põe uma caixinha à direita de cada gráfico dizendo em que faixa
     o indicador cai — é o que a equipe pediu em 22/set/2026, e o que permite
     ler o gráfico sem decorar a régua. O texto é **citação**: vem de
-    `doencas.hanseniase.TEXTO_PARAMETROS`, não é gerado dos cortes.
+    `doencas.hanseniase.TEXTO_PARAMETROS`, não é gerado dos cortes; aqui só
+    a unidade repetida sobe para o título.
     """
+    titulo, linhas = _fatorar_unidade(titulo, tuple(linhas))
     itens = "".join(f"<li>{escape(linha)}</li>" for linha in linhas)
     rodape = (
         f'<div class="quadro-parametros-fonte">{escape(fonte)}</div>' if fonte else ""
