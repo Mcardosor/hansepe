@@ -168,6 +168,33 @@ Foi este harness que confirmou a §1: a detecção geral acompanha o boletim
 dentro da defasagem, enquanto a detecção em < 15 anos fica 8% a 28% acima
 porque conta todas as entradas.
 
+### Município a município — a Tabela 2
+
+`scripts/extrair_tabela_boletim.py` lê os 185 municípios e as 12 Regionais
+de Saúde da Tabela 2 (nove indicadores de 2024) e grava
+`referencia_boletim_municipios.json`. Medido em 25/set/2026:
+
+| | |
+|---|---|
+| Municípios com caso em alguma das fontes | 136 (49 zerados nas duas) |
+| Batem no número exato | **95** |
+| Mediana da diferença | **0** caso |
+| Desvio mediano da taxa | **0,13%** |
+| Extremos | −2 (Condado, Custódia) a +8 (Jaboatão) |
+
+Ficar abaixo em um ou dois casos acontece: entre uma extração e outra o
+SINAN corrige o município de residência, e o caso **muda de lugar** em vez
+de aparecer. No estado isso se cancela; por município, não. O teste tolera
+até três para baixo e sinaliza qualquer coisa além.
+
+A mesma tabela valida o `recortes.py`: as 12 GERES contra as nossas regiões
+de saúde. Três batem exatamente (VI/Arcoverde 100, XI/Serra Talhada 71,
+V/Garanhuns 51). A numeração oficial — I GERES é Recife, VIII é Petrolina —
+está em `GERES_PARA_REGIAO`, no teste.
+
+O boletim escreve **"Garanhus"** na Tabela 2; é erro de digitação dele, e o
+extrator tem o apelido registrado.
+
 ## 10. O que a origem mostra e este painel não — de propósito
 
 - Sete tópicos de interesse (`NDUPLIC_N`, `IN_VINCULA`, `UFATUAL`,

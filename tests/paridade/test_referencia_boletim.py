@@ -42,6 +42,14 @@ MARGEM_ACIMA = 0.08
 #: boletim publica com uma casa decimal.
 MARGEM_ABAIXO = 0.01
 
+#: Por região de saúde a folga é maior que a do estado, e não por descuido:
+#: além das notificações retroativas, a correção do município de residência
+#: entre extrações **move** casos de uma região para outra, o que no estado
+#: se cancela e na região não. Medido em 2024, II GERES cresceu 14% e IX,
+#: 11%. O que este teste precisa pegar é município no recorte errado, que
+#: desloca dezenas de casos de uma vez.
+MARGEM_REGIAO = 0.20
+
 
 def _pe(ano: int):
     return calc.calcular(Escopo("HANSENIASE", ano, "UF", uf="PE"))
@@ -179,3 +187,103 @@ def test_coorte_aberta_suprime_os_indicadores_de_acompanhamento():
     assert k.cura_pct is None and k.abandono_pct is None and k.contatos_pct is None
     # O GIF é preenchido no diagnóstico, não no acompanhamento: continua.
     assert k.gif_avaliado_pct is not None
+
+
+# --- 3. município a município, com a Tabela 2 -------------------------------
+#
+# A comparação por município é a mais dura que existe para este painel: são
+# 185 unidades, e um erro de recorte geográfico ou de definição de caso novo
+# aparece aqui antes de aparecer em qualquer outro lugar.
+
+MUNICIPIOS = json.loads(
+    (Path(__file__).parent / "referencia_boletim_municipios.json").read_text(
+        encoding="utf-8"
+    )
+)
+
+#: Numeração oficial das Regionais de Saúde de PE. O boletim escreve
+#: "I GERES"; o painel usa o nome da sede, que é como a malha da SES-PE
+#: identifica a região. A correspondência foi conferida pelos números de
+#: 2024 — três batem exatamente (VI/Arcoverde 100, XI/Serra Talhada 71,
+#: V/Garanhuns 51) e as demais ficam dentro da defasagem de extração.
+GERES_PARA_REGIAO = {
+    "I": "Recife",
+    "II": "Limoeiro",
+    "III": "Palmares",
+    "IV": "Caruaru",
+    "V": "Garanhuns",
+    "VI": "Arcoverde",
+    "VII": "Salgueiro",
+    "VIII": "Petrolina",
+    "IX": "Ouricuri",
+    "X": "Afogados da Ingazeira",
+    "XI": "Serra Talhada",
+    "XII": "Goiana",
+}
+
+
+@pytest.fixture(scope="module")
+def casos_municipais():
+    from src.data import leitura
+
+    esc = Escopo("HANSENIASE", 2024, "UF", uf="PE")
+    return leitura.valores_por_geografia(esc, "casos")
+
+
+def _comparaveis(casos_municipais):
+    """(nosso, deles) de cada município com caso em pelo menos uma fonte."""
+    for codigo, linha in MUNICIPIOS["municipios"].items():
+        nosso = float(casos_municipais.get(codigo, 0.0))
+        if nosso or linha["casos"]:
+            yield linha["nome"], nosso, linha["casos"]
+
+
+def test_a_tabela_2_cobre_os_185_municipios():
+    assert len(MUNICIPIOS["municipios"]) == 185
+    assert len(MUNICIPIOS["regionais"]) == 12
+
+
+def test_maioria_dos_municipios_bate_no_numero(casos_municipais):
+    """Medido em 25/set/2026: 95 dos 136 municípios com caso saem idênticos,
+    e a mediana da diferença é zero."""
+    pares = list(_comparaveis(casos_municipais))
+    iguais = sum(1 for _, nosso, deles in pares if nosso == deles)
+    assert len(pares) > 100, "amostra pequena demais — conferir o cruzamento"
+    assert iguais / len(pares) >= 0.6, (
+        f"só {iguais} de {len(pares)} municípios batem — conferir a definição "
+        f"de caso novo ou o recorte por residência"
+    )
+
+
+def test_nenhum_municipio_fica_muito_abaixo_do_boletim(casos_municipais):
+    """Nossa extração é posterior e o SINAN cresce: ficar abaixo só se
+    explica por reclassificação de residência entre extrações, que mexe em
+    um ou dois casos. Uma queda grande seria município sumindo do recorte."""
+    abaixo = [
+        (nome, nosso, deles)
+        for nome, nosso, deles in _comparaveis(casos_municipais)
+        if nosso < deles - 3
+    ]
+    assert not abaixo, f"municípios muito abaixo do boletim: {abaixo}"
+
+
+def test_o_estado_inteiro_fica_acima_do_boletim(casos_municipais):
+    nosso = float(casos_municipais.sum())
+    deles = sum(linha["casos"] for linha in MUNICIPIOS["municipios"].values())
+    assert nosso >= deles, f"{nosso} contra {deles} — extração não encolhe"
+    assert nosso <= deles * (1 + MARGEM_ACIMA)
+
+
+@pytest.mark.parametrize("geres", sorted(GERES_PARA_REGIAO))
+def test_regioes_de_saude_batem_com_as_geres(geres: str):
+    """Valida a agregação por região de saúde contra a do boletim — é o
+    teste do `recortes.py`: município no recorte errado aparece aqui."""
+    from src.data import leitura
+
+    esperado = MUNICIPIOS["regionais"][geres]["casos"]
+    esc = Escopo("HANSENIASE", 2024, "UF", uf="PE")
+    nosso = float(leitura.valores_por_regiao(esc, "casos", "micro")[GERES_PARA_REGIAO[geres]])
+    assert nosso >= esperado - 3, f"{geres} GERES: {nosso} contra {esperado}"
+    assert nosso <= esperado * (1 + MARGEM_REGIAO) + 5, (
+        f"{geres} GERES: {nosso} contra {esperado} — município no recorte errado?"
+    )

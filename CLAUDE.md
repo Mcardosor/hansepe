@@ -76,6 +76,10 @@ PE) → `src/data/*` → `src/mapa.py` e `src/graficos.py`.
   21/set/2026. Detalhes e medição: `../tbpe/docs/mapa-clique.md`.
 - **Animação não se mede no navegador embutido do app** (1 frame/s com a
   janela oculta): falso negativo.
+- **A paridade externa é o boletim da SES-PE**, não o painel de origem:
+  `tests/paridade/referencia_boletim*.json`, com os 185 municípios e as 12
+  GERES da Tabela 2. Regerar com `python -m scripts.extrair_tabela_boletim
+  <pdf>` (o PDF não entra no repositório; precisa de `pypdf`).
 - **Os parâmetros das legendas são os do boletim estadual** e estão presos
   por teste (`tests/paridade/test_referencia_boletim.py`): cortes, nomes das
   classes e bordas. Mexer no `CORTES_FIXOS`/`NOMES_FIXOS` sem o boletim na
