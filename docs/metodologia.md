@@ -58,8 +58,36 @@ Detalhes que mudam o número:
   total dá 9,3%; sobre os avaliados (grau 0, 1 e 2), que é a regra do MS,
   dá 12,0%.
 - **Multibacilar** exclui os sem classificação (1 em 2.356).
+- **Os parâmetros de classificação são os do boletim estadual** — detecção
+  geral, detecção < 15 anos, GIF II, cura, abandono, contatos e GIF
+  avaliado. Conferidos um a um contra os Gráficos 1, 2 e 10 a 13 em
+  25/set/2026, e presos por teste em `tests/paridade/test_referencia_boletim.py`.
 - A fração sob os cards de proporção ("1.953 de 2.355") é exatamente a
   conta que produziu o percentual.
+
+## Indicadores de qualidade do programa
+
+Os quatro da Tabela 2 do boletim que acompanham o tratamento, com os
+parâmetros de classificação do Ministério exibidos no próprio card.
+
+| Indicador | Fórmula | Parâmetros |
+|---|---|---|
+| Proporção de cura | `TPALTA_N = 1` ÷ todas as saídas registradas | Bom ≥ 90% · Regular 75–89,9% · Precário < 75% |
+| Proporção de abandono | `TPALTA_N = 7` ÷ todas as saídas registradas | Bom < 10% · Regular 10–25% · Precário > 25% |
+| Contatos examinados | Σ(`CONTEXAM` × n) ÷ Σ(`CONTREG` × n) | Bom ≥ 90% · Regular 75–89,9% · Precário < 75% |
+| GIF avaliado no diagnóstico | (grau 0 + I + II) ÷ casos | Bom ≥ 90% · Regular 75–89,9% · Precário < 75% |
+
+**São aproximação de coorte.** O boletim fecha a coorte — PB diagnosticados
+no ano anterior, MB dois anos antes —, o que exige o microdado; aqui é por
+ano de diagnóstico. Medido em PE 2024: cura 67,1% contra 65,0% publicados,
+abandono 12,2% contra 13,5%, contatos 81,6% contra 77,3%, GIF avaliado
+82,7% contra 83,6%.
+
+**Coorte aberta é suprimida.** Cura, abandono e contatos se preenchem ao
+longo do acompanhamento: em 2025 só 19% dos casos têm saída registrada, e a
+"proporção de cura" daria 30% — programa nenhum, ano incompleto. Abaixo de
+50% de cobertura os três não aparecem, e o painel diz por quê. O GIF
+avaliado continua, porque é campo de diagnóstico.
 
 ## Agregação por macrorregião e região de saúde
 

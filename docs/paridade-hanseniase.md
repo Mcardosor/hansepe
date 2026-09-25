@@ -9,7 +9,7 @@ divergir é bug.**
 valores lidos da tela deles, congelados em `referencia_origem.json` em
 18/set/2026 — antes de qualquer fórmula ser escrita.
 
-**Estado em 20/set/2026:** cinco dos sete cards de PE 2025 (0–14, casos
+**Estado em 25/set/2026:** cinco dos sete cards de PE 2025 (0–14, casos
 0–14, curas, MB, grau II), as variações deles, curas e população dos popups
 municipais e o drill-down da macro batem no dígito. **Casos novos e taxa de
 detecção divergem de propósito** desde 20/set/2026: seguem a definição do
@@ -126,7 +126,49 @@ painel só lê o nível UF quando não há recorte, e o nível MUN nos demais, a
 epicurva de PE inteiro pode diferir em poucos casos da soma das macros.
 Registrado; irrelevante para os cards, que saem de `incidence`.
 
-## 8. O que a origem mostra e este painel não — de propósito
+## 8. Indicadores de qualidade: aproximação de coorte
+
+Cura, abandono, contatos examinados e GIF avaliado entraram em 25/set/2026,
+pedidos na reunião do dia 22. O boletim os calcula por **coorte** (PB
+diagnosticados no ano anterior, MB dois anos antes); com os agregados só dá
+para fazer por **ano de diagnóstico**. Medido em PE 2024:
+
+| Indicador | Nosso | Boletim |
+|---|---:|---:|
+| Proporção de cura | 67,1% | 65,0% |
+| Proporção de abandono | 12,2% | 13,5% |
+| Contatos examinados | 81,6% | 77,3% |
+| GIF avaliado no diagnóstico | 82,7% | 83,6% |
+
+No estado a aproximação segura de 1 a 4 pontos, e a classificação do
+boletim não muda. **Por município ela se solta**: em Abreu e Lima 2024 dá
+72,7% de cura contra 58,3% publicados, e 93,7% de contatos contra 72,4%.
+Fecha com o microdado (`pedido-microdado.md`).
+
+O quinto indicador da Tabela 2 — **% GIF na cura** — ficou de fora: o
+denominador é a coorte de curados, que não existe nos agregados (dá 32,6%
+contra 46,9% publicados, distância que não é aproximação, é outra conta).
+
+**Coorte aberta.** Abaixo de 50% de saídas registradas os três indicadores
+de acompanhamento são suprimidos — ver `kpis.COBERTURA_MINIMA_COORTE`. Em
+2025 seriam 30,4% de cura com 19% de cobertura.
+
+## 9. Paridade com o boletim — a fonte externa
+
+`tests/paridade/test_referencia_boletim.py` compara contra o Boletim
+Epidemiológico de Hanseníase 2025 (SES-PE), congelado em
+`referencia_boletim.json`: os sete quadros de parâmetros, a série de PE
+2015–2024 e os indicadores de qualidade de 2023 e 2024.
+
+A tolerância é **assimétrica**: o boletim foi tabulado em 16/04/2025 e nossa
+extração é posterior, então ficar acima é o comportamento correto — medido,
+de +0,4% a +4,4% na detecção geral. Ficar abaixo não tem causa benigna.
+
+Foi este harness que confirmou a §1: a detecção geral acompanha o boletim
+dentro da defasagem, enquanto a detecção em < 15 anos fica 8% a 28% acima
+porque conta todas as entradas.
+
+## 10. O que a origem mostra e este painel não — de propósito
 
 - Sete tópicos de interesse (`NDUPLIC_N`, `IN_VINCULA`, `UFATUAL`,
   `UFRESAT`, `DTMUDESQ`, `CLASSATUAL`, `ESQ_ATU_N`, `AVAL_ATU_N`): controle

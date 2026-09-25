@@ -76,6 +76,13 @@ PE) → `src/data/*` → `src/mapa.py` e `src/graficos.py`.
   21/set/2026. Detalhes e medição: `../tbpe/docs/mapa-clique.md`.
 - **Animação não se mede no navegador embutido do app** (1 frame/s com a
   janela oculta): falso negativo.
+- **Os parâmetros das legendas são os do boletim estadual** e estão presos
+  por teste (`tests/paridade/test_referencia_boletim.py`): cortes, nomes das
+  classes e bordas. Mexer no `CORTES_FIXOS`/`NOMES_FIXOS` sem o boletim na
+  mão quebra a suíte, e é essa a intenção.
+- **Coorte aberta suprime cura, abandono e contatos** abaixo de 50% de
+  saídas registradas (`kpis.COBERTURA_MINIMA_COORTE`): em 2025 a cura daria
+  30,4%, que é ano incompleto, não programa ruim.
 - **`casos_total` da hanseníase é toda entrada no registro**, não caso novo.
   Casos novos e detecção saem de `leitura.casos_novos_ms` /
   `casos_novos_por_municipio` (`MODOENTR = 1`); 0–14, grau II, curas e a
@@ -93,6 +100,7 @@ PE) → `src/data/*` → `src/mapa.py` e `src/graficos.py`.
 
 ## Estado
 
-Fase 1, com agregados. O microdado está pedido (`docs/pedido-microdado.md`);
+Fase 1, com agregados. Os sete indicadores do boletim que dá para calcular
+estão na tela; falta o % GIF na cura, que precisa da coorte. O microdado está pedido (`docs/pedido-microdado.md`);
 com ele entram cura de coorte, contatos examinados, abandono e as taxas
 0–14 e grau II sobre casos novos. Deploy: `docs/deploy.md`.

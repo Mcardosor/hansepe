@@ -61,7 +61,11 @@ AJUDA_CLASSIFICACAO = """Como as cores repartem os valores.
 
 **Quintis** põem um quinto dos municípios em cada cor — é a classificação do painel de origem. Fácil de explicar, mas a régua muda a cada ano.
 
-**Endemicidade** usa os parâmetros oficiais do Ministério da Saúde: baixa (< 2), média (2–10), alta (10–20), muito alta (20–40) e hiperendêmica (≥ 40 por 100 mil). É a única que deixa dois anos comparáveis."""
+**Endemicidade** usa os parâmetros oficiais: Baixo (< 2), Médio (2,00–9,99), Alto (10,00–19,99), Muito alto (20,00–39,99) e Hiperendêmico (≥ 40 por 100 mil). É a única que deixa dois anos comparáveis.
+
+{fonte}"""
+
+AJUDA_CLASSIFICACAO = AJUDA_CLASSIFICACAO.format(fonte=pack.FONTE_PARAMETROS)
 
 TODO_O_ESTADO = "— todo o estado —"
 
@@ -320,6 +324,10 @@ def _card(metrica: str, atual, anterior) -> None:
         num, den = (getattr(atual, campo, None) for campo in fracao)
         if num is not None and den:
             sub += f" • {ui.formatar_inteiro(num)} de {ui.formatar_inteiro(den)}"
+    # A classificação do boletim ao lado do número — é o que transforma
+    # "67,1%" em "precário". Pedido da reunião de 22/set/2026.
+    if classe := pack.classe_de(metrica, valor):
+        sub += f" • {classe}"
     st.markdown(
         ui.kpi_card(
             pack.rotulo(metrica) if proporcao else pack.rotulo_curto(metrica),
@@ -637,7 +645,57 @@ with direita:
 
 
 # ---------------------------------------------------------------------------
-# Linha 2: tópicos de interesse
+# Linha 2: indicadores de qualidade do programa
+# ---------------------------------------------------------------------------
+#
+# Os quatro da Tabela 2 do boletim que faltavam no painel: cura, contatos
+# examinados, GIF avaliado e abandono. Ficam numa faixa própria, e não entre
+# os KPIs do topo, porque respondem outra pergunta — não "quanta doença há",
+# mas "como o programa está indo". Cada card traz a classificação oficial.
+
+AJUDA_QUALIDADE = (
+    "Indicadores de acompanhamento do programa, nos parâmetros do Boletim "
+    "Epidemiológico de Hanseníase. Cura, contatos e abandono são por **ano "
+    "de diagnóstico**, não por coorte: o boletim fecha a coorte (PB do ano "
+    "anterior, MB de dois anos antes), o que exige o microdado. Em PE 2024 a "
+    "diferença é de 1 a 4 pontos — ver docs/paridade-hanseniase.md §8."
+)
+
+with resiliencia.painel("Indicadores de qualidade"), st.container(
+    border=True, key="cartao-qualidade"
+):
+    st.markdown(
+        ui.titulo_painel(
+            "Indicadores de qualidade do programa", ajuda=AJUDA_QUALIDADE
+        ),
+        unsafe_allow_html=True,
+    )
+    for coluna, metrica in zip(
+        st.columns(len(pack.INDICADORES_QUALIDADE)),
+        pack.INDICADORES_QUALIDADE,
+        strict=True,
+    ):
+        with coluna:
+            _card(metrica, atual, anterior)
+
+    # Coorte aberta: dizer **por que** três dos quatro estão vazios. Sem
+    # isto o card em branco parece defeito, e o número que estava ali antes
+    # ("30,4% de cura" em 2025) parecia programa ruim.
+    if getattr(atual, "coorte_aberta", False):
+        st.caption(
+            f"Cura, abandono e contatos não aparecem em {nav.ano}: a coorte "
+            f"ainda não fechou — {ui.formatar_inteiro(atual.saidas)} de "
+            f"{ui.formatar_inteiro(atual.gif_base)} casos têm saída de "
+            f"tratamento registrada "
+            f"({ui.formatar_decimal((atual.cobertura_saidas or 0) * 100, 0)}%). "
+            f"Esses indicadores se preenchem ao longo do acompanhamento; o "
+            f"boletim os publica até o último ano de coorte fechada."
+        )
+    st.caption(pack.FONTE_PARAMETROS)
+
+
+# ---------------------------------------------------------------------------
+# Linha 3: tópicos de interesse
 # ---------------------------------------------------------------------------
 
 TOPICOS_POR_LINHA = 2
@@ -701,7 +759,7 @@ with resiliencia.painel("Tópicos de interesse"), st.container(border=True, key=
 
 
 # ---------------------------------------------------------------------------
-# Linha 3: os dois temporais do rodapé do painel de origem
+# Linha 4: os dois temporais do rodapé do painel de origem
 # ---------------------------------------------------------------------------
 
 with resiliencia.painel("Séries anuais"), st.container(border=True, key="cartao-series"):

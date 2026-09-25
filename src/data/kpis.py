@@ -15,6 +15,20 @@ from .escopo import Escopo
 
 POR_100K = 100_000
 
+#: Quanto das saídas de tratamento precisa estar registrado para cura,
+#: abandono e contatos significarem alguma coisa.
+#:
+#: Esses três se preenchem ao longo do acompanhamento, não no diagnóstico:
+#: medido em PE, a cobertura (saídas registradas ÷ casos) vai de 97% em 2018
+#: a 19% em 2025. Com 19%, a "proporção de cura" dá 30% — e não é programa
+#: ruim, é coorte aberta. O boletim resolve publicando esses indicadores só
+#: até o último ano de coorte fechada; aqui o número é suprimido, como o
+#: percentual de base pequena em `leitura.MINIMO_PARA_PERCENTUAL`.
+#:
+#: 50% é folgado: 2024 fecha com 65,7% e reproduz o boletim (67,1% contra
+#: 65,0%), e 2023 com 74,2%.
+COBERTURA_MINIMA_COORTE = 0.5
+
 
 def _div(numerador, denominador, fator: float = 1.0) -> float | None:
     try:
@@ -178,6 +192,23 @@ class Kpis:
     prop_grau2_pct: float | None = None
     grau2: float | None = None
     avaliacao_base: float | None = None
+    #: Indicadores de qualidade do programa, nos parâmetros do Boletim
+    #: Epidemiológico de Hanseníase (SES-PE). Todos com numerador e
+    #: denominador guardados, para a fração do card sair da mesma conta.
+    abandono_pct: float | None = None
+    abandonos: float | None = None
+    saidas: float | None = None
+    contatos_pct: float | None = None
+    contatos_examinados: float | None = None
+    contatos_registrados: float | None = None
+    gif_avaliado_pct: float | None = None
+    gif_avaliados: float | None = None
+    gif_base: float | None = None
+    #: A coorte do ano ainda não fechou — cura, abandono e contatos vêm
+    #: nulos. Ver `COBERTURA_MINIMA_COORTE`.
+    coorte_aberta: bool = False
+    #: Saídas registradas ÷ casos, o que decidiu a supressão acima.
+    cobertura_saidas: float | None = None
 
 
 def encerramentos(esc: Escopo):
@@ -236,6 +267,19 @@ def calcular(esc: Escopo, regra_interrupcao: str | None = None) -> Kpis:
     casos_0_14 = inc14.get("casos_0_14_total")
     pop_0_14 = inc14.get("pop_0_14_total")
 
+    # Cura e encerramentos: na TB saem de `SITUA_ENCE`; na hanseníase, de
+    # `TPALTA_N`, dentro de `proporcoes_hanseniase` — que entra no fim e traz
+    # os três campos. Por isso aqui eles só existem fora da hanseníase.
+    desfecho_tb = (
+        {}
+        if esc.doenca == "HANSENIASE"
+        else {
+            "cura_pct": _div(desfechos.get("cura"), desfechos.get("total"), 100),
+            "cura_encerrada": _num(desfechos.get("cura")),
+            "encerramentos": _num(desfechos.get("total")),
+        }
+    )
+
     return Kpis(
         casos=_num(casos),
         obitos=_num(obitos),
@@ -244,9 +288,7 @@ def calcular(esc: Escopo, regra_interrupcao: str | None = None) -> Kpis:
         incid=_div(casos, pop, POR_100K),
         mortalidade=_div(obitos, pop, POR_100K),
         letalidade=_div(obitos, casos, 100),
-        cura_pct=_div(desfechos.get("cura"), desfechos.get("total"), 100),
-        cura_encerrada=_num(desfechos.get("cura")),
-        encerramentos=_num(desfechos.get("total")),
+        **desfecho_tb,
         casos_0_14=_num(casos_0_14),
         pop_0_14=_num(pop_0_14),
         taxa_det_0_14=_div(casos_0_14, pop_0_14, POR_100K),
@@ -279,13 +321,57 @@ def proporcoes_hanseniase(esc: Escopo, inc: dict) -> dict[str, float | None]:
     partes = [inc.get(c) for c in ("casos_grau_0", "casos_grau_I", "casos_grau_II", "casos_nao_avaliado")]
     base = sum(float(v) for v in partes if _num(v) is not None) if any(_num(v) is not None for v in partes) else None
 
+    # --- indicadores de qualidade do programa (parâmetros SES-PE/MS) ------
+    #
+    # Cura e abandono saem de `TPALTA_N`, sobre **todas as saídas
+    # registradas** no ano de diagnóstico — transferências e erro diagnóstico
+    # inclusive. O boletim usa a coorte de casos novos (PB do ano anterior,
+    # MB de dois anos antes), que só o microdado permite fechar; medido em PE
+    # 2024, a aproximação dá 67,1% de cura contra 65,0% publicados e 12,2% de
+    # abandono contra 13,5%. Ver docs/paridade-hanseniase.md §8.
+    saida = leitura.variavel_sinan(esc, "TPALTA_N")
+    saidas = float(saida["n"].sum()) if not saida.empty else None
+    curados = float(saida.loc[saida["valor"] == "1", "n"].sum()) if not saida.empty else None
+    abandonos = float(saida.loc[saida["valor"] == "7", "n"].sum()) if not saida.empty else None
+
+    # Contatos: o valor da ficha é a **quantidade** por caso, não um código.
+    examinados = leitura.soma_ponderada(esc, "CONTEXAM")
+    registrados = leitura.soma_ponderada(esc, "CONTREG")
+
+    # GIF avaliado no diagnóstico: quantos casos tiveram o grau de
+    # incapacidade avaliado (grau 0, I ou II) sobre o total de casos.
+    avaliados = sum(
+        float(v) for v in (inc.get("casos_grau_0"), inc.get("casos_grau_I"), inc.get("casos_grau_II"))
+        if _num(v) is not None
+    ) or None
+    casos_total = inc.get("casos_total")
+
+    # Coorte aberta: os três indicadores de acompanhamento saem nulos, e o
+    # card mostra "—" em vez de um número que só diz que o ano é recente.
+    cobertura = _div(saidas, casos_total)
+    aberta = cobertura is not None and cobertura < COBERTURA_MINIMA_COORTE
+
     return {
+        "coorte_aberta": aberta,
+        "cobertura_saidas": cobertura,
         "prop_mb_pct": _div(mb, classificados, 100),
         "multibacilares": _num(mb),
         "classificados": _num(classificados),
         "prop_grau2_pct": _div(grau2, base, 100),
         "grau2": grau2,
         "avaliacao_base": _num(base),
+        "cura_pct": None if aberta else _div(curados, saidas, 100),
+        "cura_encerrada": _num(curados),
+        "encerramentos": _num(saidas),
+        "abandono_pct": None if aberta else _div(abandonos, saidas, 100),
+        "abandonos": _num(abandonos),
+        "saidas": _num(saidas),
+        "contatos_pct": None if aberta else _div(examinados, registrados, 100),
+        "contatos_examinados": _num(examinados),
+        "contatos_registrados": _num(registrados),
+        "gif_avaliado_pct": _div(avaliados, casos_total, 100),
+        "gif_avaliados": _num(avaliados),
+        "gif_base": _num(casos_total),
     }
 
 
@@ -367,20 +453,15 @@ def calcular_regiao(esc: Escopo, municipios: list[str]) -> Kpis:
     `leitura.componentes_de_regiao`. Só o que a hanseníase exibe; os campos
     de TB ficam em ``None``.
     """
+    from dataclasses import replace
+
     c = leitura.componentes_de_regiao(esc, municipios)
     if not c:
         return Kpis()
-    classe = c["classopera"]
-    mb = float(classe.loc[classe["valor"] == "2", "n"].sum()) if not classe.empty else None
-    classificados = (
-        float(classe.loc[classe["valor"].isin(["1", "2"]), "n"].sum())
-        if not classe.empty else None
-    )
-    partes = [c.get(k) for k in ("casos_grau_0", "casos_grau_I", "casos_grau_II", "casos_nao_avaliado")]
-    base = (
-        sum(float(v) for v in partes if _num(v) is not None)
-        if any(_num(v) is not None for v in partes) else None
-    )
+    # As proporções saem do mesmo caminho do estado e do município — um
+    # `Escopo` com a lista de municípios da região faz `variavel_sinan` ler
+    # a partição municipal e somar só eles.
+    regiao = replace(esc, municipios=tuple(municipios))
     casos = c.get("casos_novos_ms")
     return Kpis(
         casos=_num(casos),
@@ -390,10 +471,5 @@ def calcular_regiao(esc: Escopo, municipios: list[str]) -> Kpis:
         casos_0_14=_num(c.get("casos_0_14_total")),
         pop_0_14=_num(c.get("pop_0_14_total")),
         taxa_det_0_14=_div(c.get("casos_0_14_total"), c.get("pop_0_14_total"), POR_100K),
-        prop_mb_pct=_div(mb, classificados, 100),
-        multibacilares=_num(mb),
-        classificados=_num(classificados),
-        prop_grau2_pct=_div(c.get("casos_grau_II"), base, 100),
-        grau2=_num(c.get("casos_grau_II")),
-        avaliacao_base=_num(base),
+        **proporcoes_hanseniase(regiao, c),
     )

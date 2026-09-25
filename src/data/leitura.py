@@ -1086,17 +1086,6 @@ def componentes_de_regiao(esc: Escopo, municipios: list[str]) -> dict:
     landing = caminho(
         "sinan_landing", doenca=config.cod_landing(esc.doenca), nivel="MUN", ano=esc.ano
     )
-    classe = conectar().execute(
-        f"""
-        SELECT trim(valor) AS valor, sum(n) AS n
-        FROM read_parquet('{landing}', hive_partitioning=true)
-        WHERE variavel = 'CLASSOPERA' AND sexo = 'TOTAL'
-          AND geo_id IN ({marcadores})
-        GROUP BY 1
-        """,
-        codigos,
-    ).fetchdf()
-
     novos = conectar().execute(
         f"""
         SELECT sum(n) FROM read_parquet('{landing}', hive_partitioning=true)
@@ -1106,7 +1095,7 @@ def componentes_de_regiao(esc: Escopo, municipios: list[str]) -> dict:
         [CASO_NOVO_MS, *codigos],
     ).fetchone()
     return {
-        **base, **faixa, "classopera": classe,
+        **base, **faixa,
         "casos_novos_ms": float(novos[0]) if novos and novos[0] is not None else 0.0,
     }
 
@@ -1216,3 +1205,24 @@ def _serie_anual_casos_novos_ms(esc, metrica, fonte_pop, onde, params) -> pd.Dat
     casos = por_ano.reindex(pop.index).fillna(0.0)
     valor = casos if metrica == "casos" else casos / pop.replace(0, pd.NA) * 100_000
     return pd.DataFrame({"ano": pop.index, "valor": valor.to_numpy()})
+
+
+def soma_ponderada(esc: Escopo, variavel: str) -> float | None:
+    """Σ(valor × n) de uma variável **numérica** da ficha.
+
+    ``CONTEXAM`` e ``CONTREG`` guardam o número de contatos examinados e
+    registrados de cada caso, não um código: a linha ``valor = "3", n = 317``
+    quer dizer 317 casos com três contatos. O total do recorte é a soma
+    ponderada. Ver `doencas.hanseniase.VARIAVEIS_NUMERICAS`.
+
+    Vai por :func:`variavel_sinan`, então respeita UF, município e região.
+    """
+    df = variavel_sinan(esc, variavel)
+    if df.empty:
+        return None
+    valores = pd.to_numeric(df["valor"], errors="coerce")
+    pesos = pd.to_numeric(df["n"], errors="coerce")
+    validos = valores.notna() & pesos.notna()
+    if not validos.any():
+        return None
+    return float((valores[validos] * pesos[validos]).sum())

@@ -1,0 +1,73 @@
+{
+  "_fonte": "Boletim Epidemiológico de Hanseníase — SES-PE/SEVSAP, Anual 2025. Dados tabulados em 16/04/2025, sujeitos a alteração. PDF em REUNIAO ALINHAMENTO PERNAMBUCO/BOLETIM_EPIDEMIOLOGICO_HANSEN_2025.pdf; parâmetros conferidos na reunião de 22/set/2026.",
+  "_leitura": "Nossa extração é posterior à tabulação deles e o SINAN só cresce: ficar ACIMA é o esperado, ficar abaixo não tem explicação benigna. Ver docs/paridade-hanseniase.md §10.",
+
+  "parametros": {
+    "incid": {
+      "cortes": [0, 2, 10, 20, 40],
+      "nomes": ["Baixo", "Médio", "Alto", "Muito alto", "Hiperendêmico"],
+      "texto": "Hiperendêmico: >40,0/100 mil hab. | Muito alto: 20,00 a 39,99 | Alto: 10,00 a 19,99 | Médio: 2,00 a 9,99 | Baixo: < 2,00",
+      "grafico": 1
+    },
+    "taxa_det_0_14": {
+      "cortes": [0, 0.5, 2.5, 5, 10],
+      "nomes": ["Baixo", "Médio", "Alto", "Muito alto", "Hiperendêmico"],
+      "texto": "Hiperendêmico: ≥10,00 por 100 mil hab. | Muito alto: 5,00 a 9,99 | Alto: 2,50 a 4,99 | Médio: 0,50 a 2,49 | Baixo: < 0,50",
+      "grafico": 2
+    },
+    "prop_grau2_pct": {
+      "cortes": [0, 5, 10],
+      "nomes": ["Baixo", "Médio", "Alto"],
+      "texto": "Baixo < 5% | Médio 5 a 9,99% | Alto ≥ 10%",
+      "grafico": 12
+    },
+    "cura_pct": {
+      "cortes": [0, 75, 90, 100],
+      "nomes": ["Precário", "Regular", "Bom"],
+      "texto": "Bom ≥ 90% | Regular ≥ 75 a 89,9% | Precário < 75%",
+      "grafico": 13
+    },
+    "contatos_pct": {
+      "cortes": [0, 75, 90, 100],
+      "nomes": ["Precário", "Regular", "Bom"],
+      "texto": "Bom ≥ 90% | Regular ≥ 75 a 89,9% | Precário < 75%",
+      "grafico": 10
+    },
+    "gif_avaliado_pct": {
+      "cortes": [0, 75, 90, 100],
+      "nomes": ["Precário", "Regular", "Bom"],
+      "texto": "Bom ≥ 90% | Regular ≥ 75 a 89,9% | Precário < 75%",
+      "grafico": 11
+    },
+    "abandono_pct": {
+      "cortes": [0, 10, 25, 100],
+      "nomes": ["Bom", "Regular", "Precário"],
+      "texto": "Bom < 10 % | Regular = 10-25% | Precário > 25%",
+      "grafico": 13
+    }
+  },
+
+  "serie_pe": {
+    "_colunas": "casos novos e coeficiente de detecção geral (Gráfico 1); casos e coeficiente em menores de 15 anos (Gráfico 2)",
+    "2015": {"casos": 2374, "incid": 25.4, "casos_0_14": 246, "taxa_det_0_14": 11.0},
+    "2016": {"casos": 1851, "incid": 19.7, "casos_0_14": 176, "taxa_det_0_14": 8.0},
+    "2017": {"casos": 2383, "incid": 25.2, "casos_0_14": 195, "taxa_det_0_14": 9.0},
+    "2018": {"casos": 2248, "incid": 23.7, "casos_0_14": 153, "taxa_det_0_14": 7.1},
+    "2019": {"casos": 2505, "incid": 26.2, "casos_0_14": 158, "taxa_det_0_14": 7.4},
+    "2020": {"casos": 1581, "incid": 16.4, "casos_0_14": 81, "taxa_det_0_14": 3.8},
+    "2021": {"casos": 1547, "incid": 16.0, "casos_0_14": 74, "taxa_det_0_14": 3.5},
+    "2022": {"casos": 1871, "incid": 19.3, "casos_0_14": 94, "taxa_det_0_14": 4.5},
+    "2023": {"casos": 1772, "incid": 18.3, "casos_0_14": 77, "taxa_det_0_14": 3.7},
+    "2024": {"casos": 1699, "incid": 17.8, "casos_0_14": 108, "taxa_det_0_14": 5.5}
+  },
+
+  "qualidade_pe": {
+    "_colunas": "Gráficos 10 a 13, por ano de coorte",
+    "2019": {"contatos_pct": 90.2, "gif_avaliado_pct": 79.7, "prop_grau2_pct": 8.4, "cura_pct": 82.3, "abandono_pct": 8.5},
+    "2020": {"contatos_pct": 87.0, "gif_avaliado_pct": 84.9, "prop_grau2_pct": 8.3, "cura_pct": 79.8, "abandono_pct": 10.5},
+    "2021": {"contatos_pct": 83.7, "gif_avaliado_pct": 79.2, "prop_grau2_pct": 7.3, "cura_pct": 77.0, "abandono_pct": 13.5},
+    "2022": {"contatos_pct": 79.9, "gif_avaliado_pct": 76.4, "prop_grau2_pct": 10.4, "cura_pct": 75.0, "abandono_pct": 14.0},
+    "2023": {"contatos_pct": 79.6, "gif_avaliado_pct": 80.0, "prop_grau2_pct": 9.8, "cura_pct": 73.3, "abandono_pct": 12.9},
+    "2024": {"contatos_pct": 77.3, "gif_avaliado_pct": 83.6, "prop_grau2_pct": 12.5, "cura_pct": 65.0, "abandono_pct": 13.5}
+  }
+}
