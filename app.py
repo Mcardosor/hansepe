@@ -73,6 +73,11 @@ TODO_O_ESTADO = "— todo o estado —"
 
 #: Altura do mapa. A coluna da direita empilha as proporções, o canal e a
 #: epicurva; o mapa precisa fechar na mesma altura.
+#: A fonte dos **dados**, que não é a dos parâmetros: a régua vem do boletim
+#: da SES-PE, os números vêm da nossa extração do Sinan. Misturar as duas
+#: daria ao gráfico a autoridade de um documento que não o publicou.
+FONTE_DADOS = "Fonte: Sinan/Ministério da Saúde; população IBGE"
+
 ALTURA_MAPA = 640
 ALTURA_LINHA_1 = ALTURA_MAPA
 
@@ -336,10 +341,43 @@ def _quadro(metrica: str, fonte: bool = False) -> None:
         )
 
 
-def _regua(metrica: str) -> None:
-    """A mesma régua do `_quadro`, deitada sob o gráfico."""
-    if texto := pack.texto_parametros(metrica):
-        st.markdown(ui.parametros_em_linha(*texto), unsafe_allow_html=True)
+#: Proporção gráfico/calha. O boletim põe a caixa de parâmetros à direita de
+#: cada gráfico e é esse o padrão do Ministério; aqui ela vira uma calha de
+#: largura fixa, para que as seções empilhadas fiquem alinhadas na vertical
+#: como num documento — foi a decisão da reunião com a Rafaela, 28/set/2026.
+CALHA = [7, 3]
+
+
+def _com_calha(titulo: str, *, ajuda: str = ""):
+    """Título da seção e as duas colunas: o gráfico e a calha da direita.
+
+    Devolver as colunas, em vez de desenhar, é o que deixa cada seção decidir
+    o que vai na calha — régua do MS onde ela existe, legenda de séries onde
+    há mais de uma, base do cálculo nas distribuições. Inventar faixa de
+    classificação para quem não tem seria dar autoridade de parâmetro oficial
+    a número escolhido por nós.
+    """
+    st.markdown(ui.titulo_painel(titulo, ajuda=ajuda), unsafe_allow_html=True)
+    return st.columns(CALHA, vertical_alignment="top")
+
+
+def _calha_base(dados: pd.DataFrame, *, complemento: str = "") -> None:
+    """A calha das distribuições: quantos registros sustentam o gráfico.
+
+    Distribuição não tem régua — o boletim não põe caixa nos Gráficos 5 a 9.
+    O que falta ali é o denominador, que é justamente o que decide se o
+    percentual quer dizer alguma coisa.
+    """
+    if dados.empty:
+        return
+    total = int(dados["total"].iloc[0])
+    linhas = [f"{ui.formatar_inteiro(total)} casos com o campo preenchido"]
+    if complemento:
+        linhas.append(complemento)
+    st.markdown(
+        ui.quadro_parametros("Base do cálculo", tuple(linhas), fonte=FONTE_DADOS),
+        unsafe_allow_html=True,
+    )
 
 
 def _card(metrica: str, atual, anterior) -> None:
@@ -764,16 +802,12 @@ with resiliencia.painel("Indicadores de qualidade"), st.container(
 with resiliencia.painel("Contatos examinados"), st.container(
     border=True, key="cartao-contatos"
 ):
-    st.markdown(
-        ui.titulo_painel(
-            "Proporção de contatos examinados entre os registrados",
-            ajuda="Soma dos contatos examinados dividida pela dos registrados, "
-                  "por ano de diagnóstico. Anos de coorte aberta ficam vazios: "
-                  "o exame de contatos acontece ao longo do acompanhamento.",
-        ),
-        unsafe_allow_html=True,
+    grafico_contatos, regua_contatos = _com_calha(
+        "Proporção de contatos examinados entre os registrados",
+        ajuda="Soma dos contatos examinados dividida pela dos registrados, "
+              "por ano de diagnóstico. Anos de coorte aberta ficam vazios: "
+              "o exame de contatos acontece ao longo do acompanhamento.",
     )
-    grafico_contatos, regua_contatos = st.columns([7, 3], vertical_alignment="top")
     with grafico_contatos:
         grafico_componente.desenhar(
             grafico_componente.indicador_anual(
@@ -792,37 +826,49 @@ with resiliencia.painel("Contatos examinados"), st.container(
 # Linha 3: tópicos de interesse
 # ---------------------------------------------------------------------------
 
-TOPICOS_POR_LINHA = 2
+#: Um por linha desde 28/set/2026. Eram dois, e com a calha ao lado cada um
+#: ficaria com pouco mais de um terço da página — largura em que "1ª a 4ª
+#: série incompleta do EF" não cabe no eixo.
+TOPICOS_POR_LINHA = 1
 ALTURA_MINIMA_TOPICO = 175
 LARGURA_ROTULO_TOPICO = 150
 
 AJUDA_TOPICOS = (
     "Distribuição de cada variável da ficha de hanseníase no recorte corrente. "
-    "As seis que abrem são as que a vigilância olha primeiro; as demais estão "
-    "no seletor. Abaixo de cinco registros o percentual não é publicável e só "
-    "a contagem aparece."
+    "As cinco que abrem são as que o Boletim Epidemiológico publica (Gráficos "
+    "5 a 9), na ordem dele; as demais estão no seletor. Abaixo de cinco "
+    "registros o percentual não é publicável e só a contagem aparece."
 )
 
 
 def _desenhar_topico(variavel: str, rotulo: str, altura: int) -> None:
     dados = _composicao(nav.ano, nav.nivel, nav.mun, nav.macro, nav.micro, variavel)
-    # ECharts vivo, uma instância por variável: ao clicar no mapa as barras
-    # das dez deslizam juntas para o recorte novo.
-    grafico_componente.desenhar(
-        grafico_componente.composicao(
+    grafico, calha = _com_calha(f"Proporção de casos segundo {rotulo.lower()}")
+    with grafico:
+        # ECharts vivo, uma instância por variável: ao clicar no mapa as barras
+        # das cinco deslizam juntas para o recorte novo.
+        grafico_componente.desenhar(
+            grafico_componente.composicao(
+                dados,
+                rotulo="",
+                cor=pack.cor("prop_mb_pct"),
+                largura_rotulo=LARGURA_ROTULO_TOPICO,
+                ordem_dos_dados=variavel in pack.VARIAVEIS_NUMERICAS,
+            ),
+            altura=altura,
+            key=f"topico-{variavel}",
+        )
+    with calha:
+        # "casos" e não "casos novos": a distribuição sai do `sinan_landing`,
+        # que não cruza variável com modo de entrada — o boletim escreve
+        # "casos novos" nos Gráficos 5 a 9 e nós não podemos. Paridade §1.1.
+        _calha_base(
             dados,
-            rotulo=rotulo,
-            cor=pack.cor("prop_mb_pct"),
-            largura_rotulo=LARGURA_ROTULO_TOPICO,
-            ordem_dos_dados=variavel in pack.VARIAVEIS_NUMERICAS,
-        ),
-        altura=altura,
-        key=f"topico-{variavel}",
-    )
-    if not dados.empty and dados["pct"].isna().all():
-        st.caption(
-            f"Base de {int(dados['total'].iloc[0])} registros — pequena demais "
-            f"para percentual. Só a contagem aparece."
+            complemento=(
+                "Base pequena demais para percentual"
+                if not dados.empty and dados["pct"].isna().all()
+                else ""
+            ),
         )
 
 
@@ -840,16 +886,14 @@ with resiliencia.painel("Tópicos de interesse"), st.container(border=True, key=
     if not escolhidas:
         st.caption("Nenhuma variável escolhida. Use o campo acima para trazer as que interessam.")
     else:
-        for inicio in range(0, len(escolhidas), TOPICOS_POR_LINHA):
-            linha = escolhidas[inicio : inicio + TOPICOS_POR_LINHA]
+        for variavel in escolhidas:
             altura = max(
-                grafico_componente.altura_composicao(len(_composicao(nav.ano, nav.nivel, nav.mun, nav.macro, nav.micro, v)))
-                for v in linha
+                grafico_componente.altura_composicao(
+                    len(_composicao(nav.ano, nav.nivel, nav.mun, nav.macro, nav.micro, variavel))
+                ),
+                ALTURA_MINIMA_TOPICO,
             )
-            altura = max(altura, ALTURA_MINIMA_TOPICO)
-            for coluna, variavel in zip(st.columns(TOPICOS_POR_LINHA, gap="medium"), linha, strict=False):
-                with coluna:
-                    _desenhar_topico(variavel, planas[variavel], altura)
+            _desenhar_topico(variavel, planas[variavel], altura)
 
 
 # ---------------------------------------------------------------------------
@@ -857,16 +901,15 @@ with resiliencia.painel("Tópicos de interesse"), st.container(border=True, key=
 # ---------------------------------------------------------------------------
 
 with resiliencia.painel("Séries anuais"), st.container(border=True, key="cartao-series"):
-    col_mb, col_014 = st.columns(2, gap="medium")
-    with col_mb:
-        st.markdown(
-            ui.titulo_painel(
-                "Classificação operacional por ano",
-                ajuda="Casos PB e MB por ano de diagnóstico; a linha é a proporção "
-                      "de multibacilares sobre os classificados.",
-            ),
-            unsafe_allow_html=True,
-        )
+    # Um por linha desde 28/set/2026, e não mais lado a lado: com a calha da
+    # legenda ao lado, dois gráficos por linha deixariam cada um com um terço
+    # da página. O boletim também dá uma linha inteira a cada gráfico.
+    grafico_mb, calha_mb = _com_calha(
+        "Classificação operacional por ano",
+        ajuda="Casos PB e MB por ano de diagnóstico; a linha é a proporção "
+              "de multibacilares sobre os classificados.",
+    )
+    with grafico_mb:
         grafico_componente.desenhar(
             grafico_componente.barras_empilhadas_com_linha(
                 _serie_classificacao(nav.nivel, nav.mun, nav.macro, nav.micro),
@@ -875,22 +918,37 @@ with resiliencia.painel("Séries anuais"), st.container(border=True, key="cartao
                 rotulo_linha="Proporção MB (%)",
                 cores={"pb": "#C4B5FD", "mb": pack.cor("prop_mb_pct")},
                 cor_linha=pack.cor("incid"),
+                legenda=False,
             ),
             altura=260, key="classificacao-operacional",
         )
-    with col_014:
+    with calha_mb:
+        # Aqui a calha é a legenda das séries: classificação operacional não
+        # tem parâmetro de classificação no boletim, e inventar um seria dar
+        # régua oficial a corte nosso.
         st.markdown(
-            ui.titulo_painel(
-                "Casos de 0 a 14 anos por ano",
-                ajuda="Casos em menores de 15 anos por ano de diagnóstico; a linha "
-                      "é a taxa por 100 mil habitantes dessa faixa etária. Conta "
-                      "todas as entradas no registro, não só casos novos: a "
-                      "extração não cruza idade com modo de entrada, e por isso "
-                      "a taxa fica acima da régua abaixo, que o Ministério "
-                      "define sobre casos novos.",
+            ui.legenda_series(
+                "Séries",
+                (
+                    ("PB - Paucibacilar", "#C4B5FD"),
+                    ("MB - Multibacilar", pack.cor("prop_mb_pct")),
+                    ("Proporção MB (%)", pack.cor("incid")),
+                ),
+                fonte=FONTE_DADOS,
             ),
             unsafe_allow_html=True,
         )
+
+    grafico_014, calha_014 = _com_calha(
+        "Casos de 0 a 14 anos por ano",
+        ajuda="Casos em menores de 15 anos por ano de diagnóstico; a linha "
+              "é a taxa por 100 mil habitantes dessa faixa etária. Conta "
+              "todas as entradas no registro, não só casos novos: a "
+              "extração não cruza idade com modo de entrada, e por isso "
+              "a taxa fica acima da régua ao lado, que o Ministério "
+              "define sobre casos novos.",
+    )
+    with grafico_014:
         grafico_componente.desenhar(
             grafico_componente.barras_empilhadas_com_linha(
                 _serie_0_14(nav.nivel, nav.mun, nav.macro, nav.micro),
@@ -900,14 +958,25 @@ with resiliencia.painel("Séries anuais"), st.container(border=True, key="cartao
                 cores={"casos": "#C4B5FD"},
                 cor_linha=pack.cor("taxa_det_0_14"),
                 casas_linha=2,
+                legenda=False,
             ),
             altura=260, key="casos-0-14",
         )
-        # Em linha sob o gráfico, e não em caixa ao lado: aqui os dois
-        # gráficos do rodapé dividem a largura, e a caixa deixaria um
-        # mais estreito que o outro sem motivo. No gráfico anual de
-        # detecção, que tem coluna só para ele, a caixa continua.
-        _regua("taxa_det_0_14")
+    with calha_014:
+        # Este tem régua: é o Gráfico 2 do boletim. A legenda das séries cabe
+        # embaixo dela, porque as duas informações são curtas.
+        _quadro("taxa_det_0_14")
+        st.markdown(
+            ui.legenda_series(
+                "Séries",
+                (
+                    ("Casos (0 a 14)", "#C4B5FD"),
+                    ("Taxa de detecção 0–14", pack.cor("taxa_det_0_14")),
+                ),
+                fonte=FONTE_DADOS,
+            ),
+            unsafe_allow_html=True,
+        )
 
 
 st.caption(

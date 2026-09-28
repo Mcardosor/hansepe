@@ -221,12 +221,16 @@ def composicao(
     pt-BR aqui: o ECharts não formata número por texto.
     """
     opt = _base()
-    opt["title"] = {
-        "text": rotulo,
-        "left": 0,
-        "top": 0,
-        "textStyle": {"fontSize": 13, "fontWeight": 600},
-    }
+    # `rotulo` vazio deixa o gráfico sem título próprio: desde que cada tópico
+    # ganhou linha inteira e título de seção (28/set/2026), escrever o nome da
+    # variável duas vezes, uma sobre a outra, era só ruído.
+    if rotulo:
+        opt["title"] = {
+            "text": rotulo,
+            "left": 0,
+            "top": 0,
+            "textStyle": {"fontSize": 13, "fontWeight": 600},
+        }
     if dados.empty:
         opt["title"] = {
             "text": "Sem registro desta variável no recorte",
@@ -260,7 +264,11 @@ def composicao(
         })
 
     opt.update({
-        "grid": {"left": largura_rotulo + 8, "right": 16, "top": 34, "bottom": 40},
+        # Sem título próprio, o topo não precisa da faixa que o abrigava.
+        "grid": {
+            "left": largura_rotulo + 8, "right": 16,
+            "top": 34 if rotulo else 8, "bottom": 40,
+        },
         "xAxis": {
             "type": "value",
             "name": titulo_x,
@@ -682,6 +690,7 @@ def barras_empilhadas_com_linha(
     cores: dict[str, str],
     cor_linha: str,
     casas_linha: int = 1,
+    legenda: bool = True,
 ) -> dict:
     """Barras empilhadas por ano com uma linha em eixo próprio à direita.
 
@@ -716,8 +725,12 @@ def barras_empilhadas_com_linha(
     })
 
     opt.update({
-        "grid": {"left": 56, "right": 64, "top": 40, "bottom": 32},
+        # Sem legenda dentro, a moldura ganha as 24px do topo de volta: quem
+        # desenha com a legenda na calha (`legenda=False`) está mostrando os
+        # nomes das séries ao lado, como o boletim.
+        "grid": {"left": 56, "right": 64, "top": 40 if legenda else 16, "bottom": 32},
         "legend": {
+            "show": legenda,
             "data": [*barras.values(), rotulo_linha], "top": 0, "left": 0,
             "icon": "roundRect", "itemWidth": 12, "itemHeight": 12,
             "textStyle": {"fontSize": _FONTE_PX},

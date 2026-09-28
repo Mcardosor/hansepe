@@ -367,14 +367,21 @@ VARIAVEIS: dict[str, dict[str, str]] = {
     },
 }
 
-#: As que abrem de saída — o que a vigilância da hanseníase olha primeiro.
+#: As que abrem de saída — e a escolha deixou de ser nossa em 28/set/2026.
+#:
+#: São exatamente as cinco distribuições que o Boletim Epidemiológico
+#: publica, na ordem em que ele imprime: raça/cor (Gráfico 5), modo de
+#: detecção (6), escolaridade (7), classificação operacional (8) e forma
+#: clínica (9). Antes eram seis escolhidas por nós; agora o painel abre no
+#: que o estado publica, e o argumento na frente da equipe é o documento.
+#:
+#: As outras onze continuam no seletor para quem quiser.
 VARIAVEIS_DESTAQUE = (
-    "CLASSOPERA",
-    "AVALIA_N",
-    "FORMACLINI",
-    "MODOENTR",
-    "TPALTA_N",
     "CS_RACA",
+    "MODODETECT",
+    "CS_ESCOL_N",
+    "CLASSOPERA",
+    "FORMACLINI",
 )
 
 

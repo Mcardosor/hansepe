@@ -710,6 +710,14 @@ def css_layout() -> str:
   background: color-mix(in srgb, currentColor 4%, Canvas 96%);
 }}
 .quadro-parametros-titulo {{ font-weight: 700; margin-bottom: 4px; }}
+.quadro-legenda li {{ display: flex; align-items: center; gap: 7px; }}
+.quadro-legenda li i {{
+  width: 11px;
+  height: 11px;
+  flex: none;
+  border-radius: 3px;
+  border: 1px solid color-mix(in srgb, currentColor 18%, transparent);
+}}
 .parametros-linha {{
   font-family: var(--fonte);
   font-size: {tokens.TEXTO_XS};
@@ -1022,6 +1030,31 @@ def _fatorar_unidade(titulo: str, linhas: tuple[str, ...]):
     if rotulo.startswith("100"):
         rotulo = f"por {rotulo}"
     return f"{titulo} ({rotulo})", enxutas
+
+
+def legenda_series(titulo: str, itens, fonte: str = "") -> str:
+    """Legenda de séries na calha, para o gráfico que tem mais de uma.
+
+    Mesma caixa do `quadro_parametros`, com um quadradinho de cor antes de
+    cada nome. Existe porque a decisão de 28/set/2026 foi dar calha a todo
+    gráfico, como o boletim faz: onde há régua do Ministério, a calha é a
+    régua; onde há várias séries, é esta legenda — que sai de dentro do
+    gráfico e deixa de comer altura útil dele.
+
+    ``itens`` é uma sequência de ``(rótulo, cor)``.
+    """
+    linhas = "".join(
+        f'<li><i style="background:{escape(cor)}"></i>{escape(rotulo)}</li>'
+        for rotulo, cor in itens
+    )
+    rodape = (
+        f'<div class="quadro-parametros-fonte">{escape(fonte)}</div>' if fonte else ""
+    )
+    return (
+        f'<div class="quadro-parametros quadro-legenda">'
+        f'<div class="quadro-parametros-titulo">{escape(titulo)}</div>'
+        f"<ul>{linhas}</ul>{rodape}</div>"
+    )
 
 
 def parametros_em_linha(titulo: str, linhas) -> str:
