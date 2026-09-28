@@ -208,6 +208,7 @@ def composicao(
     cor: str,
     largura_rotulo: int = 220,
     ordem_dos_dados: bool = False,
+    orientacao: str = "barra",
 ) -> dict:
     """Distribuição de uma variável do SINAN, em barras horizontais — ECharts.
 
@@ -246,9 +247,12 @@ def composicao(
 
     if not ordem_dos_dados:
         base = base.sort_values("valor", ascending=False)
-    # Eixo de categoria cresce de baixo para cima: o primeiro da lista fica
-    # embaixo, então a ordem de leitura se inverte aqui.
-    base = base.iloc[::-1]
+    if orientacao != "coluna":
+        # Eixo de categoria cresce de baixo para cima: o primeiro da lista
+        # fica embaixo, então a ordem de leitura se inverte aqui. Em coluna
+        # o eixo já corre da esquerda para a direita, e inverter viraria a
+        # ordem do boletim de cabeça para baixo.
+        base = base.iloc[::-1]
 
     itens = []
     for linha in base.itertuples(index=False):
@@ -262,6 +266,52 @@ def composicao(
             "value": None if pd.isna(linha.valor) else float(linha.valor),
             "tooltip": "<br/>".join(partes),
         })
+
+    if orientacao == "coluna":
+        # O formato dos Gráficos 5, 6 e 7: colunas, eixo preso em 0–100% e o
+        # valor escrito em cima. O eixo fixo é o que permite comparar dois
+        # recortes sem reler a escala — com eixo automático, uma categoria de
+        # 12% num município e 40% em outro desenham a mesma altura de barra.
+        maximo = 100 if percentual else None
+        opt.update({
+            "grid": {
+                "left": 56, "right": 16,
+                "top": 34 if rotulo else 24, "bottom": 64,
+            },
+            "xAxis": {
+                "type": "category",
+                "data": [i["name"] for i in itens],
+                "axisLine": {"lineStyle": {"color": _COR_EIXO}},
+                "axisTick": {"show": False},
+                "axisLabel": {
+                    "fontSize": _FONTE_PX,
+                    "interval": 0,
+                    # 104px cabe "Encaminhamento" numa linha só: com 90 o
+                    # ECharts quebrava no meio da palavra, porque "break"
+                    # sem espaço para quebrar quebra onde der.
+                    "width": 104,
+                    "overflow": "break",
+                    "lineHeight": 12,
+                },
+            },
+            "yAxis": {
+                **_eixo_valor(titulo_x),
+                "min": 0,
+                **({"max": maximo} if maximo else {}),
+            },
+            "series": [{
+                "id": "composicao",
+                "type": "bar",
+                "data": itens,
+                "barCategoryGap": "30%",
+                "itemStyle": {"color": cor, "borderRadius": [2, 2, 0, 0]},
+                "label": {
+                    "show": True, "position": "top",
+                    "fontSize": _FONTE_PX, "casas": 1 if percentual else 0,
+                },
+            }],
+        })
+        return opt
 
     opt.update({
         # Sem título próprio, o topo não precisa da faixa que o abrigava.
@@ -298,6 +348,12 @@ def composicao(
             "data": itens,
             "barCategoryGap": "30%",
             "itemStyle": {"color": cor, "borderRadius": [0, 2, 2, 0]},
+            # O boletim escreve o valor na ponta da barra (Gráficos 8 e 9);
+            # sem ele, ler "41,2" exige mirar no eixo.
+            "label": {
+                "show": True, "position": "right",
+                "fontSize": _FONTE_PX, "casas": 1 if percentual else 0,
+            },
         }],
     })
     return opt
@@ -345,6 +401,13 @@ def _eixo_categoria(rotulos: list[str]) -> dict:
         "axisTick": {"lineStyle": {"color": _COR_EIXO}},
         "axisLabel": {"fontSize": _FONTE_PX},
     }
+
+
+def _com_alfa(cor: str, alfa: float) -> str:
+    """`#RRGGBB` com transparência, no formato que o ECharts aceita."""
+    texto = cor.lstrip("#")
+    r, g, b = (int(texto[i : i + 2], 16) for i in (0, 2, 4))
+    return f"rgba({r},{g},{b},{alfa})"
 
 
 def _valor(v) -> float | None:
@@ -493,6 +556,7 @@ def indicador_anual(
     coluna: str = "pct",
     maximo: float | None = 100,
     casas: int = 1,
+    tipo: str = "barra",
 ) -> dict:
     """Indicador em percentual por ano, no formato dos Gráficos 10 a 13.
 
@@ -526,9 +590,21 @@ def indicador_anual(
         },
         "yAxis": {**_eixo_valor(rotulo), "min": 0, **({"max": maximo} if maximo else {})},
         "series": [{
-            "id": "indicador", "type": "bar", "data": itens,
-            "itemStyle": {"color": cor, "borderRadius": [3, 3, 0, 0]},
+            "id": "indicador",
+            "type": "line" if tipo == "linha" else "bar",
+            "data": itens,
+            "itemStyle": {
+                "color": cor,
+                **({} if tipo == "linha" else {"borderRadius": [3, 3, 0, 0]}),
+            },
             "barCategoryGap": "30%",
+            # Marcador quadrado e linha de 2px: é como o boletim desenha o
+            # Gráfico 10. O quadrado distingue o ponto da linha de grade sem
+            # depender da cor.
+            **({
+                "symbol": "rect", "symbolSize": 8,
+                "lineStyle": {"width": 2, "color": cor},
+            } if tipo == "linha" else {}),
             "label": {
                 "show": True, "position": "top",
                 "fontSize": _FONTE_PX, "casas": casas,
@@ -562,6 +638,19 @@ def epicurva(dados: pd.DataFrame, *, rotulo: str, cor: str, ano_em_foco: int | N
         "id": "serie", "name": rotulo, "type": "line", "data": pontos(base),
         "symbol": "circle", "symbolSize": 6, "showSymbol": False,
         "lineStyle": {"width": 1.6, "color": cor}, "itemStyle": {"color": cor},
+        # Área sob a linha, como num gráfico de cotação: a série é uma
+        # contagem que parte do zero, e o preenchimento mostra isso sem
+        # precisar de segunda escala. Desce a transparente para não virar
+        # bloco de cor atrás dos rótulos do eixo.
+        "areaStyle": {
+            "color": {
+                "type": "linear", "x": 0, "y": 0, "x2": 0, "y2": 1,
+                "colorStops": [
+                    {"offset": 0, "color": _com_alfa(cor, 0.30)},
+                    {"offset": 1, "color": _com_alfa(cor, 0.02)},
+                ],
+            }
+        },
     }]
     if ano_em_foco is not None:
         foco = base[base["ano"] == ano_em_foco]
@@ -585,7 +674,14 @@ def epicurva(dados: pd.DataFrame, *, rotulo: str, cor: str, ano_em_foco: int | N
     })
     opt["tooltip"].update({
         "trigger": "axis",
-        "axisPointer": {"type": "line", "lineStyle": {"color": "rgba(128,128,128,.55)"}},
+        # Mira tracejada, que é como os gráficos de série temporal marcam o
+        # ponto sob o cursor — a linha cheia se confunde com a própria série.
+        "axisPointer": {
+            "type": "line",
+            "lineStyle": {
+                "color": "rgba(128,128,128,.7)", "width": 1, "type": "dashed",
+            },
+        },
         "ocultas": [nome_foco],
         "casas": 0,
         "mesNoEixo": True,
@@ -691,6 +787,7 @@ def barras_empilhadas_com_linha(
     cor_linha: str,
     casas_linha: int = 1,
     legenda: bool = True,
+    rotulos: bool = False,
 ) -> dict:
     """Barras empilhadas por ano com uma linha em eixo próprio à direita.
 
@@ -712,6 +809,13 @@ def barras_empilhadas_com_linha(
             "data": [{"name": a, "value": _valor(v)} for a, v in zip(anos, base[coluna], strict=True)],
             "itemStyle": {"color": cores[coluna]},
             "barCategoryGap": "30%",
+            # O boletim escreve o N **dentro** da barra, em branco, rente à
+            # base (Gráficos 1 e 2). Em cima ele colidiria com o rótulo da
+            # linha, que passa por ali.
+            **({"label": {
+                "show": True, "position": "insideBottom", "distance": 6,
+                "color": "#FFFFFF", "fontSize": _FONTE_PX, "casas": 0,
+            }} if rotulos else {}),
         })
     # Só a última fatia da pilha leva o canto arredondado, senão cada fatia
     # fecha em arco e a pilha fica com "juntas".
@@ -719,19 +823,27 @@ def barras_empilhadas_com_linha(
     series.append({
         "id": "linha", "name": rotulo_linha, "type": "line", "yAxisIndex": 1,
         "data": [{"name": a, "value": _valor(v)} for a, v in zip(anos, base[linha], strict=True)],
-        "symbol": "circle", "symbolSize": 6,
+        "symbol": "rect", "symbolSize": 7,
         "lineStyle": {"width": 2, "color": cor_linha}, "itemStyle": {"color": cor_linha},
         "z": 4,
+        **({"label": {
+            "show": True, "position": "top",
+            "fontSize": _FONTE_PX, "casas": casas_linha,
+        }} if rotulos else {}),
     })
 
     opt.update({
-        # Sem legenda dentro, a moldura ganha as 24px do topo de volta: quem
-        # desenha com a legenda na calha (`legenda=False`) está mostrando os
-        # nomes das séries ao lado, como o boletim.
-        "grid": {"left": 56, "right": 64, "top": 40 if legenda else 16, "bottom": 32},
+        # Legenda embaixo e centrada, como no boletim (Gráficos 1, 2, 11 e
+        # 13) — não no topo à esquerda, e não na calha: ali fica só a régua do
+        # Ministério. O topo sobra para o rótulo que a linha escreve.
+        "grid": {
+            "left": 56, "right": 64,
+            "top": 24, "bottom": 56 if legenda else 32,
+        },
         "legend": {
             "show": legenda,
-            "data": [*barras.values(), rotulo_linha], "top": 0, "left": 0,
+            "data": [*barras.values(), rotulo_linha],
+            "bottom": 0, "left": "center",
             "icon": "roundRect", "itemWidth": 12, "itemHeight": 12,
             "textStyle": {"fontSize": _FONTE_PX},
         },

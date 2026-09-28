@@ -933,11 +933,17 @@ def piramide_completa(esc: Escopo, tipo: str = "CASOS") -> pd.DataFrame:
 
 
 
+#: Códigos que o SINAN usa para "ignorado/branco" nos campos categóricos.
+#: O boletim os imprime **primeiro**, e não escondidos no fim.
+CODIGOS_IGNORADO = frozenset({"9", "99", "999", "0"})
+
+
 def composicao(
     esc: Escopo,
     variavel: str,
     rotulos: dict[str, str] | None = None,
     numerica: bool = False,
+    ordem: str = "frequencia",
 ) -> pd.DataFrame:
     """Distribuição de uma variável do SINAN, com percentual quando cabe.
 
@@ -978,6 +984,16 @@ def composicao(
     if numerica:
         dados["_ordem"] = pd.to_numeric(dados["valor"], errors="coerce")
         dados = dados.sort_values("_ordem")
+    elif ordem == "codigo":
+        # A ordem do **campo**, como o boletim publica: ignorado/branco
+        # primeiro, depois os códigos em ordem. Ordenar por frequência, que
+        # era o que fazíamos, muda a posição da categoria conforme o recorte —
+        # "Ign/Branco" salta do fim para o meio ao clicar num município, e
+        # quem compara dois recortes lado a lado compara posições diferentes.
+        codigo = dados["valor"].astype(str).str.strip()
+        dados["_ign"] = (~codigo.str.fullmatch(r"\d+")) | codigo.isin(CODIGOS_IGNORADO)
+        dados["_ordem"] = pd.to_numeric(codigo, errors="coerce")
+        dados = dados.sort_values(["_ign", "_ordem"], ascending=[False, True])
     else:
         dados = dados.sort_values("n", ascending=False)
     return dados[["categoria", "n", "pct", "total"]].reset_index(drop=True)

@@ -129,7 +129,9 @@
     (option.series || []).forEach((s) => {
       if (s.label && s.label.casas !== undefined) {
         const casasRotulo = Number(s.label.casas) || 0;
-        s.label.color = corTexto;
+        // Cor explícita do Python (o branco de dentro da barra) manda; sem
+        // ela, o rótulo segue o texto do tema.
+        if (!s.label.color) s.label.color = corTexto;
         s.label.formatter = (p) =>
           p.value === null || p.value === undefined
             ? ""

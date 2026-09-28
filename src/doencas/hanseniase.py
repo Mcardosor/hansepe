@@ -175,6 +175,16 @@ TAXAS = frozenset(
      "abandono_pct", "contatos_pct", "gif_avaliado_pct"}
 )
 
+#: O par de cores do boletim estadual: roxo para a série principal, laranja
+#: para a segunda (a linha do coeficiente nos Gráficos 1 e 2, o %GIF Cura no
+#: 11, o abandono no 13). Lidas do PDF em 28/set/2026.
+#:
+#: Vale só para os gráficos que reproduzem os do boletim. O resto do painel
+#: segue a identidade do Cenários — misturar as duas paletas na mesma tela é
+#: que faria a página parecer remendo.
+COR_BOLETIM = "#5B4B8A"
+COR_BOLETIM_SECUNDARIA = "#E8701A"
+
 #: Rampa roxa do painel de origem, para as taxas de detecção.
 #:
 #: O primeiro tom era ``#EDE9FE``, quase branco: no tema claro os municípios
@@ -377,12 +387,48 @@ VARIAVEIS: dict[str, dict[str, str]] = {
 #:
 #: As outras onze continuam no seletor para quem quiser.
 VARIAVEIS_DESTAQUE = (
-    "CS_RACA",
     "MODODETECT",
-    "CS_ESCOL_N",
     "CLASSOPERA",
     "FORMACLINI",
 )
+
+#: Como cada tópico é desenhado, seguindo o boletim gráfico a gráfico.
+#:
+#: O Ministério não desenha toda distribuição igual. Poucas categorias de nome
+#: comprido saem em **barras deitadas** — "PAUCIBACILAR/MULTIBACILAR" no
+#: Gráfico 8, as cinco formas clínicas no 9. Muitas categorias saem em
+#: **colunas**, com o eixo preso em 0 a 100% e o valor escrito em cima:
+#: raça/cor (5), modo de detecção (6), escolaridade (7).
+#:
+#: Fora essas cinco, que o boletim publica, a regra abaixo decide: rótulo
+#: comprido não cabe embaixo de uma coluna.
+ORIENTACAO_TOPICO = {
+    "CS_RACA": "coluna",        # Gráfico 5
+    "MODODETECT": "coluna",     # Gráfico 6
+    "CS_ESCOL_N": "coluna",     # Gráfico 7
+    "CLASSOPERA": "barra",      # Gráfico 8
+    "FORMACLINI": "barra",      # Gráfico 9
+}
+
+#: Acima deste comprimento, o rótulo não cabe sob uma coluna e a variável vai
+#: para barras deitadas.
+LIMITE_ROTULO_EM_COLUNA = 22
+
+
+def orientacao_topico(variavel: str, categorias) -> str:
+    """``"coluna"`` ou ``"barra"`` para a distribuição desta variável."""
+    if variavel in ORIENTACAO_TOPICO:
+        return ORIENTACAO_TOPICO[variavel]
+    if variavel in VARIAVEIS_NUMERICAS:
+        return "coluna"
+    rotulos = [str(c) for c in categorias]
+    if not rotulos or len(rotulos) > 9:
+        return "barra"
+    return (
+        "coluna"
+        if max(len(r) for r in rotulos) <= LIMITE_ROTULO_EM_COLUNA
+        else "barra"
+    )
 
 
 def variaveis_planas() -> dict[str, str]:
