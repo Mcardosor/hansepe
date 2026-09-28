@@ -200,8 +200,13 @@ def _canal(ano: int, nivel: str, mun: str | None, macro, micro, grau: str | None
 
 
 @st.cache_data(ttl=TTL_DADOS, show_spinner=False)
-def _epicurva(ano: int, nivel: str, mun: str | None, macro, micro) -> pd.DataFrame:
-    return canal.epicurva(_escopo(ano, nivel, mun, macro, micro))
+def _epicurva(
+    ano: int, nivel: str, mun: str | None, macro, micro, ano_min: int | None = None
+) -> pd.DataFrame:
+    # Aqui a janela entra no leitor, e não no `_recortar`: a epicurva monta a
+    # série ano a ano, uma consulta por ano, e com dez anos são seis idas ao
+    # disco a menos do que com dezesseis.
+    return canal.epicurva(_escopo(ano, nivel, mun, macro, micro), ano_min=ano_min)
 
 
 @st.cache_data(ttl=TTL_DADOS, show_spinner=False)
@@ -352,6 +357,44 @@ def _quadro(metrica: str, fonte: bool = False) -> None:
         )
 
 
+#: Janelas de tempo oferecidas para as séries, em anos.
+#:
+#: Pedido da reunião de 28/set/2026. Não é só conforto visual: com 16 anos de
+#: barras num gráfico de 500px cada uma some, e o boletim publica os
+#: indicadores em seis anos (2019–2024) e a detecção em dez (2015–2024). Dez é
+#: o padrão daqui pelo mesmo motivo — é o recorte do Gráfico 1.
+JANELAS = (5, 10, 15)
+SERIE_INTEIRA = "Toda a série"
+JANELA_PADRAO = 10
+
+
+def _janela() -> int | None:
+    """Quantos anos as séries mostram, ou ``None`` para todos."""
+    escolha = st.session_state.get("janela", JANELA_PADRAO)
+    return None if escolha == SERIE_INTEIRA else int(escolha)
+
+
+def _ano_inicial() -> int | None:
+    """Primeiro ano da janela, contando de trás para frente a partir do ano
+    selecionado. ``None`` quando a janela é a série inteira."""
+    janela = _janela()
+    return None if janela is None else nav.ano - janela + 1
+
+
+def _recortar(dados: pd.DataFrame) -> pd.DataFrame:
+    """Deixa na série só os anos da janela.
+
+    Filtrar aqui, e não no leitor, é de propósito: os leitores são
+    cacheados por recorte geográfico, e pôr a janela na chave multiplicaria
+    o cache por quatro para devolver sempre o mesmo subconjunto.
+    """
+    if dados.empty or "ano" not in dados:
+        return dados
+    inicio = _ano_inicial()
+    recorte = dados[dados["ano"] <= nav.ano]
+    return recorte if inicio is None else recorte[recorte["ano"] >= inicio]
+
+
 #: Proporção gráfico/calha. O boletim põe a caixa de parâmetros à direita de
 #: cada gráfico e é esse o padrão do Ministério; aqui ela vira uma calha de
 #: largura fixa, para que as seções empilhadas fiquem alinhadas na vertical
@@ -446,14 +489,28 @@ with resiliencia.painel("Indicadores"):
 # Dentro da coluna do mapa eles comiam um terço da altura e quebravam em três
 # linhas; numa faixa de largura inteira cabem os cinco lado a lado.
 with resiliencia.painel("Controles"), st.container(border=True, key="cartao-controles"):
-    col_ano, col_metrica, col_recorte, col_cores, col_busca = st.columns(
-        [1.1, 4.2, 3.2, 3.2, 2.3], vertical_alignment="top"
+    col_ano, col_janela, col_metrica, col_recorte, col_cores, col_busca = st.columns(
+        [1.1, 1.5, 3.8, 3.0, 3.0, 2.1], vertical_alignment="top"
     )
     with col_ano:
         escolhido = st.selectbox("Ano", _anos(), index=_anos().index(nav.ano), key="ano")
         if escolhido != nav.ano:
             nav.ano = escolhido
             st.rerun()
+    with col_janela:
+        # Fica ao lado do ano porque os dois dizem a mesma coisa: um escolhe
+        # onde a série termina, o outro quanto dela se vê. E fica **acima**
+        # de todos os gráficos que comanda, então não precisa de callback.
+        st.selectbox(
+            "Janela",
+            [*JANELAS, SERIE_INTEIRA],
+            index=list(JANELAS).index(JANELA_PADRAO),
+            format_func=lambda j: j if isinstance(j, str) else f"{j} anos",
+            key="janela",
+            help="Quantos anos as séries de tempo mostram, contados de trás "
+                 "para frente a partir do ano selecionado. O boletim publica "
+                 "a detecção em dez anos e os indicadores em seis.",
+        )
     with col_metrica:
         st.segmented_control(
             "Métrica",
@@ -665,7 +722,9 @@ with direita:
                     if acima:
                         rodape += f" Em {nav.ano}, **{acima} de 12 meses** ficaram acima do topo da faixa."
             else:
-                serie = _serie_anual(nav.nivel, nav.mun, nav.macro, nav.micro, "incid")
+                serie = _recortar(
+                    _serie_anual(nav.nivel, nav.mun, nav.macro, nav.micro, "incid")
+                )
                 figura = grafico_componente.evolucao_anual(
                     serie, rotulo=pack.rotulo("incid"), cor=pack.cor("incid"), ano=nav.ano,
                 )
@@ -702,7 +761,10 @@ with direita:
             st.markdown(ui.titulo_painel("Epicurva por mês"), unsafe_allow_html=True)
             grafico_componente.desenhar(
                 grafico_componente.epicurva(
-                    _epicurva(nav.ano, nav.nivel, nav.mun, nav.macro, nav.micro),
+                    _epicurva(
+                        nav.ano, nav.nivel, nav.mun, nav.macro, nav.micro,
+                        _ano_inicial(),
+                    ),
                     rotulo="Casos", cor=pack.cor("casos"), ano_em_foco=nav.ano,
                 ),
                 altura=220, key="epicurva",
@@ -856,7 +918,7 @@ with resiliencia.painel("Contatos examinados"), st.container(
     with grafico_contatos:
         grafico_componente.desenhar(
             grafico_componente.indicador_anual(
-                _serie_contatos(nav.nivel, nav.mun, nav.macro, nav.micro),
+                _recortar(_serie_contatos(nav.nivel, nav.mun, nav.macro, nav.micro)),
                 rotulo="Proporção (%)",
                 cor=pack.cor("contatos_pct"),
                 ano=nav.ano,
@@ -957,7 +1019,7 @@ with resiliencia.painel("Séries anuais"), st.container(border=True, key="cartao
     with grafico_mb:
         grafico_componente.desenhar(
             grafico_componente.barras_empilhadas_com_linha(
-                _serie_classificacao(nav.nivel, nav.mun, nav.macro, nav.micro),
+                _recortar(_serie_classificacao(nav.nivel, nav.mun, nav.macro, nav.micro)),
                 barras={"pb": "PB - Paucibacilar", "mb": "MB - Multibacilar"},
                 linha="prop_mb",
                 rotulo_linha="Proporção MB (%)",
@@ -996,7 +1058,7 @@ with resiliencia.painel("Séries anuais"), st.container(border=True, key="cartao
     with grafico_014:
         grafico_componente.desenhar(
             grafico_componente.barras_empilhadas_com_linha(
-                _serie_0_14(nav.nivel, nav.mun, nav.macro, nav.micro),
+                _recortar(_serie_0_14(nav.nivel, nav.mun, nav.macro, nav.micro)),
                 barras={"casos": "Casos (0 a 14)"},
                 linha="taxa",
                 rotulo_linha="Taxa de detecção 0–14 (por 100 mil)",

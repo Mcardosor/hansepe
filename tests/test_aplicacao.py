@@ -182,3 +182,22 @@ def test_um_clique_na_metrica_realca_o_card_na_mesma_passada() -> None:
     cards = re.findall(r'class="kpi-card is-selected[^"]*"((?:(?!kpi-card)[\s\S])*)', html)
     assert len(cards) == 1
     assert pack.rotulo_curto(alvo) in cards[0]
+
+
+@pytest.mark.parametrize("janela", [5, 15, "Toda a série"])
+def test_toda_janela_de_tempo_monta(janela) -> None:
+    """A janela recorta cinco séries de uma vez — detecção anual, epicurva,
+    contatos, classificação operacional e 0–14 — e cada uma tem um formato
+    diferente. Um recorte que esvazie qualquer uma delas aparece aqui."""
+    at = _rodar()
+    sel = next(s for s in at.selectbox if s.label == "Janela")
+    sel.set_value(janela).run()
+    _conferir(at, f"janela {janela}")
+
+
+def test_a_janela_abre_em_dez_anos() -> None:
+    """Dez é o recorte do Gráfico 1 do boletim. Se o padrão mudar sem
+    discussão, este teste é onde a mudança encosta."""
+    at = _rodar()
+    sel = next(s for s in at.selectbox if s.label == "Janela")
+    assert sel.value == 10
