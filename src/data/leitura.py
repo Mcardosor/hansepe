@@ -1129,6 +1129,78 @@ def serie_classificacao_operacional(esc: Escopo) -> pd.DataFrame:
     return df
 
 
+def serie_contatos(esc: Escopo) -> pd.DataFrame:
+    """Proporção de contatos examinados entre os registrados, por ano.
+
+    É o Gráfico 10 do boletim estadual — o indicador que a vigilância cobra,
+    e que substituiu na tela a distribuição bruta de ``CONTEXAM`` (quantos
+    casos tiveram 0, 1, 2… contatos examinados), que era o campo da ficha
+    desenhado cru e não respondia pergunta nenhuma.
+
+    ``CONTEXAM`` e ``CONTREG`` guardam a **quantidade** por caso, não um
+    código: a linha ``valor = "3", n = 317`` são 317 casos com três contatos.
+    O total do ano é a soma ponderada, como em :func:`soma_ponderada`.
+
+    Colunas ``ano``, ``examinados``, ``registrados``, ``pct``.
+
+    **Anos de coorte aberta saem com ``pct`` nulo**, pela mesma regra dos
+    cards (`kpis.COBERTURA_MINIMA_COORTE`): exame de contato acontece ao
+    longo do acompanhamento, então o ano que acabou de começar mostraria uma
+    cobertura baixa que é do calendário, não do programa. O boletim faz o
+    mesmo ao publicar só coortes fechadas (2019–2024).
+    """
+    from . import kpis
+
+    particao, onde_geo, params_geo = particao_e_filtro_geo(esc)
+    fonte = caminho(
+        "sinan_landing", doenca=config.cod_landing(esc.doenca), nivel=particao
+    )
+    # `TRY_CAST` e não `CAST`: `valor` é texto e traz "ign" e vazios em alguns
+    # anos — um `CAST` derruba a consulta inteira por causa de uma linha.
+    sql = f"""
+        SELECT ano,
+               sum(TRY_CAST(trim(valor) AS DOUBLE) * n)
+                   FILTER (WHERE variavel = 'CONTEXAM') AS examinados,
+               sum(TRY_CAST(trim(valor) AS DOUBLE) * n)
+                   FILTER (WHERE variavel = 'CONTREG') AS registrados,
+               sum(n) FILTER (WHERE variavel = 'TPALTA_N') AS saidas
+        FROM read_parquet('{fonte}', hive_partitioning=true)
+        WHERE variavel IN ('CONTEXAM', 'CONTREG', 'TPALTA_N') AND sexo = 'TOTAL'
+    """
+    if onde_geo:
+        sql += f" AND {onde_geo}"
+    df = conectar().execute(sql + " GROUP BY ano ORDER BY ano", list(params_geo)).fetchdf()
+    if df.empty:
+        return pd.DataFrame(columns=["ano", "examinados", "registrados", "pct"])
+
+    casos = serie_anual_casos_totais(esc).set_index("ano")["casos"]
+    df["ano"] = df["ano"].astype(int)
+    cobertura = df["ano"].map(casos).astype("Float64")
+    cobertura = df["saidas"].astype("Float64") / cobertura.replace(0, pd.NA)
+
+    df["pct"] = 100 * df["examinados"] / df["registrados"].replace(0, pd.NA)
+    df.loc[cobertura < kpis.COBERTURA_MINIMA_COORTE, "pct"] = pd.NA
+    return df[["ano", "examinados", "registrados", "pct"]]
+
+
+def serie_anual_casos_totais(esc: Escopo) -> pd.DataFrame:
+    """Casos por ano **contando todas as entradas** — o denominador de
+    cobertura da coorte, não um indicador de tela.
+
+    Existe separada de :func:`serie_anual` porque aquela, para a hanseníase,
+    já devolve casos novos pela definição do MS (§1 da paridade); aqui o que
+    se quer é o total de fichas do ano, que é com o que as saídas se comparam.
+    """
+    particao, onde, params = particao_e_filtro_geo(esc, col_mun="cod_mun6")
+    fonte = caminho(
+        "incidence", doenca=config.cod_agregado(esc.doenca), nivel=particao
+    )
+    sql = f"SELECT ano, sum(casos_total) AS casos FROM read_parquet('{fonte}', hive_partitioning=true)"
+    if onde:
+        sql += f" WHERE {onde}"
+    return conectar().execute(sql + " GROUP BY ano ORDER BY ano", list(params)).fetchdf()
+
+
 def serie_0_14(esc: Escopo) -> pd.DataFrame:
     """Casos de 0 a 14 anos por ano e a taxa por 100 mil dessa faixa.
 

@@ -175,6 +175,10 @@ def test_um_clique_na_metrica_realca_o_card_na_mesma_passada() -> None:
     assert not at.exception, [e.value for e in at.exception]
     assert at.session_state.nav.metrica == alvo
     html = " ".join(m.value for m in at.markdown)
-    cards = re.findall(r'class="kpi-card is-selected[^"]*"(.{0,400})', html)
+    # Até o começo do card seguinte, e não uma janela de N caracteres: o
+    # `title` do card carrega a explicação da métrica, que cresce quando a
+    # ressalva cresce, e uma janela fixa empurrava o rótulo para fora sem
+    # que nada tivesse quebrado (28/set/2026).
+    cards = re.findall(r'class="kpi-card is-selected[^"]*"((?:(?!kpi-card)[\s\S])*)', html)
     assert len(cards) == 1
     assert pack.rotulo_curto(alvo) in cards[0]

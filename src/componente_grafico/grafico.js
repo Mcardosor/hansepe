@@ -122,6 +122,24 @@
       if (option.xAxis.nameTextStyle) option.xAxis.nameTextStyle.color = corTexto;
     }
 
+    // Rótulo em cima da barra, como nos indicadores do boletim. O Python
+    // manda `label.casas`; o formatador em pt-BR nasce aqui, porque função
+    // não atravessa o JSON que o componente recebe. Valor nulo — ano de
+    // coorte aberta — não escreve "null" em cima da barra vazia.
+    (option.series || []).forEach((s) => {
+      if (s.label && s.label.casas !== undefined) {
+        const casasRotulo = Number(s.label.casas) || 0;
+        s.label.color = corTexto;
+        s.label.formatter = (p) =>
+          p.value === null || p.value === undefined
+            ? ""
+            : Number(p.value).toLocaleString("pt-BR", {
+                minimumFractionDigits: casasRotulo,
+                maximumFractionDigits: casasRotulo,
+              });
+      }
+    });
+
     if (!instancia) {
       instancia = echarts.init(raiz, null, { renderer: "canvas" });
       instancia.on("click", aoClicar);

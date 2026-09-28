@@ -305,3 +305,47 @@ def test_regioes_de_saude_batem_com_as_geres(geres: str):
     assert nosso <= esperado * (1 + MARGEM_REGIAO) + 5, (
         f"{geres} GERES: {nosso} contra {esperado} — município no recorte errado?"
     )
+
+
+# --- 3. contatos examinados: o gráfico e o card contam a mesma coisa --------
+
+
+def test_a_serie_de_contatos_bate_com_o_card_no_mesmo_ano():
+    """O gráfico do Gráfico 10 e o card de qualidade saem de contas escritas
+    em lugares diferentes — `leitura.serie_contatos` e `kpis.calcular` — e é
+    exatamente assim que dois números do mesmo indicador se separam na mesma
+    tela. O teste amarra os dois.
+    """
+    from src.data import leitura
+
+    esc = Escopo(doenca="HANSENIASE", ano=2024, nivel="UF", uf="PE", mun=None,
+                 municipios=())
+    serie = leitura.serie_contatos(esc).set_index("ano")
+    card = calc.calcular(esc)
+    assert serie.loc[2024, "pct"] == pytest.approx(card.contatos_pct, rel=1e-9)
+    assert serie.loc[2024, "examinados"] == pytest.approx(card.contatos_examinados)
+    assert serie.loc[2024, "registrados"] == pytest.approx(card.contatos_registrados)
+
+
+def test_a_serie_de_contatos_suprime_a_coorte_aberta():
+    """2025 não pode aparecer no gráfico com um percentual: o exame de
+    contatos se acumula ao longo do acompanhamento, e o ano corrente mostraria
+    uma queda que é do calendário. O boletim publica só coortes fechadas."""
+    from src.data import leitura
+
+    esc = Escopo(doenca="HANSENIASE", ano=2025, nivel="UF", uf="PE", mun=None,
+                 municipios=())
+    serie = leitura.serie_contatos(esc).set_index("ano")
+    assert serie.loc[2025, "pct"] != serie.loc[2025, "pct"]  # NaN
+    assert serie.loc[2024, "pct"] > 0
+
+
+def test_contatos_saiu_dos_topicos_de_interesse():
+    """`CONTEXAM`/`CONTREG` como distribuição era o campo da ficha desenhado
+    cru — quantos casos tiveram 1, 2, 3 contatos. Virou proporção, que é o
+    indicador. Se voltarem ao menu, os dois convivem dizendo coisas
+    diferentes sobre a mesma palavra."""
+    assert "CONTEXAM" not in pack.variaveis_planas()
+    assert "CONTREG" not in pack.variaveis_planas()
+    # Continuam numéricas: `kpis` soma ponderado a partir daí.
+    assert {"CONTEXAM", "CONTREG"} <= pack.VARIAVEIS_NUMERICAS

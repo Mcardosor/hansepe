@@ -331,6 +331,13 @@ VARIAVEIS_NUMERICAS = frozenset({"CONTEXAM", "CONTREG", "NERVOSAFET", "DOSE_RECE
 
 #: Variáveis do SINAN oferecidas no painel de composição, agrupadas.
 #:
+#: ``CONTEXAM`` e ``CONTREG`` saíram em 28/set/2026: o valor deles é a
+#: **quantidade** de contatos por caso, e a distribuição disso ("47 casos com
+#: 2 contatos examinados") não é indicador de nada. O que a vigilância cobra é
+#: a proporção de examinados entre registrados, que virou gráfico próprio, com
+#: a régua do MS ao lado, como o Gráfico 10 do boletim. Eles continuam em
+#: :data:`VARIAVEIS_NUMERICAS` porque `kpis` os soma de lá.
+#:
 #: O painel de origem mostra as 23 do ``sinan_landing`` sem curadoria. Ficam
 #: de fora, de propósito: ``NDUPLIC_N`` e ``IN_VINCULA`` (controle do
 #: sistema, 100% num valor), ``UFATUAL``/``UFRESAT`` (quase 100% PE),
@@ -352,10 +359,6 @@ VARIAVEIS: dict[str, dict[str, str]] = {
         "ESQ_INI_N": "Esquema terapêutico inicial",
         "DOSE_RECEB": "Nº de doses supervisionadas",
         "TPALTA_N": "Tipo de saída",
-    },
-    "Contatos": {
-        "CONTREG": "Nº de contatos registrados",
-        "CONTEXAM": "Nº de contatos examinados",
     },
     "Perfil": {
         "CS_RACA": "Raça/cor",
@@ -399,7 +402,11 @@ DESCRICOES = {
     "taxa_det_0_14": (
         "Casos de 0 a 14 anos por 100 mil habitantes dessa faixa. É o "
         "indicador de transmissão recente: criança com hanseníase significa "
-        "contato próximo e contínuo com caso não tratado."
+        "contato próximo e contínuo com caso não tratado. **Conta todas as "
+        "entradas no registro**, não só casos novos: a extração não cruza "
+        "idade com modo de entrada. O parâmetro do Ministério ao lado é "
+        "definido sobre casos novos, então este número fica de 8% a 22% "
+        "acima do que a régua mede. Ver docs/paridade-hanseniase.md §1."
     ),
     "casos": (
         "Casos novos (modo de entrada 'caso novo') no ano, por município de "
@@ -408,7 +415,9 @@ DESCRICOES = {
     "casos_0_14": (
         "Entradas no registro ativo em menores de 15 anos. Aqui não dá para "
         "separar caso novo de reingresso — a extração não cruza idade com "
-        "modo de entrada; a diferença é pequena nessa faixa."
+        "modo de entrada. Medido contra o boletim de 2015 a 2024, o caso "
+        "novo é de 78% a 92% das entradas nesta faixa: a diferença **não** "
+        "é desprezível. Ver docs/paridade-hanseniase.md §1."
     ),
     "cura": (
         "Saídas por cura entre todos os casos do ano. Não é "

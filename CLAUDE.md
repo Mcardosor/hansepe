@@ -90,7 +90,10 @@ PE) → `src/data/*` → `src/mapa.py` e `src/graficos.py`.
 - **`casos_total` da hanseníase é toda entrada no registro**, não caso novo.
   Casos novos e detecção saem de `leitura.casos_novos_ms` /
   `casos_novos_por_municipio` (`MODOENTR = 1`); 0–14, grau II, curas e a
-  série mensal continuam sobre todas as entradas (paridade §1).
+  série mensal continuam sobre todas as entradas (paridade §1) — e **não dá
+  para aproximar** aplicando a proporção geral de casos novos: na faixa de
+  0–14 ela é 5 a 15 pontos maior (paridade §1.1). O dataset `cases_new`, que
+  o nome promete, é idêntico a `casos_total`: não serve (§1.3).
 - **`/XD data` no robocopy engole `src/data`** — foi assim que a camada de
   dados quase não veio. Mesma armadilha do `/data/` no `.gitignore`.
 - **O SIM para em 2024**: `componentes_municipais` tolera a partição ausente,

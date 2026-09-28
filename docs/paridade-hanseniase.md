@@ -72,6 +72,72 @@ A distância para a origem é conhecida (2.356 − 1.590 = 766) e o teste
 `test_a_divergencia_com_a_origem_continua_registrada` falha se ela sumir
 sem esta seção mudar.
 
+### 1.1 Por que não dá para estender o filtro ao resto — medido em 28/set/2026
+
+A pergunta natural é por que não aplicamos `MODOENTR = 1` também ao 0–14 e
+às séries. A resposta está na forma da extração, não na nossa disposição:
+
+- `sinan_landing` é **marginal por variável**: cada linha é
+  `(variável, valor, sexo, n)`. Existe `MODOENTR` e existem outras 22
+  variáveis, mas **nenhum cruzamento entre elas**, e nenhuma variável de
+  idade. Não há consulta que devolva "casos de 0 a 14 com modo de entrada
+  caso novo".
+- `_cache_ts`, fonte das séries mensais, cruza só por grau de incapacidade
+  (`avalia_n`). Não traz modo de entrada.
+- `incidence_0_14` traz total, sexo e cura da faixa. Também não.
+
+**E o atalho não funciona.** Seria tentador aplicar ao 0–14 a proporção de
+casos novos do total. Medimos, e ela erra para baixo — em toda a série:
+
+| ano | casos novos / entradas, geral | 0–14 nosso | 0–14 boletim | implícito no 0–14 |
+|---|---:|---:|---:|---:|
+| 2015 | 84,5% | 267 | 246 | **92,1%** |
+| 2016 | 78,4% | 220 | 176 | 80,0% |
+| 2017 | 77,0% | 228 | 195 | 85,5% |
+| 2018 | 75,3% | 189 | 153 | 81,0% |
+| 2019 | 77,2% | 194 | 158 | 81,4% |
+| 2020 | 76,4% | 102 | 81 | 79,4% |
+| 2021 | 70,3% | 95 | 74 | 77,9% |
+| 2022 | 75,4% | 112 | 94 | 83,9% |
+| 2023 | 69,5% | 97 | 77 | 79,4% |
+| 2024 | 71,4% | 125 | 108 | 86,4% |
+
+A proporção de casos novos **na faixa de 0 a 14 é sempre maior** que a
+geral, por 5 a 15 pontos. Faz sentido clínico: recidiva e reingresso após
+abandono exigem um tratamento anterior, e criança raramente já teve um.
+Usar a proporção geral como aproximação levaria 2023 de 97 para 67 — abaixo
+dos 77 do boletim, isto é, trocaria um erro de +26% por um de −13%.
+
+**Decisão: não aproximar.** O 0–14 e as séries mensais continuam sobre todas
+as entradas, com o aviso na tela (tooltip do card e ajuda do gráfico) de que
+a régua do MS ao lado é definida sobre casos novos. O conserto de verdade
+depende do microdado (`pedido-microdado.md`).
+
+### 1.2 Onde o filtro do MS acerta — conferido contra o boletim
+
+O mesmo exercício valida a decisão de 20/set. Contra os casos novos que o
+boletim publica, PE:
+
+| ano | `MODOENTR = 1` | boletim | dif. | todas as entradas |
+|---|---:|---:|---:|---:|
+| 2015 | 2.412 | 2.374 | +1,6% | +20,3% |
+| 2019 | 2.555 | 2.505 | +2,0% | +32,1% |
+| 2022 | 1.879 | 1.871 | +0,4% | +33,2% |
+| 2023 | 1.802 | 1.772 | +1,7% | +46,3% |
+| 2024 | 1.761 | 1.699 | +3,6% | +45,3% |
+
+Em dez anos medidos, o filtro fica entre **+0,4% e +4,4%** do boletim — a
+assinatura da defasagem de extração, que só cresce. Sem o filtro, de +20% a
++48%: outra ordem de grandeza, e não explicável por defasagem.
+
+### 1.3 Cuidado com o dataset `cases_new`
+
+A extração tem um `cases_new` com a coluna `casos_novos` por município.
+**Ele não é caso novo:** em PE, ano a ano de 2010 a 2025, `cases_new` é
+idêntico a `incidence.casos_total` no dígito. O nome promete o filtro que o
+conteúdo não tem. Este painel não o usa; fica o registro para quem for
+mexer no núcleo `sinan`.
+
 ## 2. Denominador do grau II — reproduzido
 
 Três denominadores possíveis para 218 casos com grau 2 em PE 2025:

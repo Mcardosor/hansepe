@@ -476,6 +476,61 @@ def evolucao_anual(dados: pd.DataFrame, *, rotulo: str, cor: str, ano: int) -> d
     return opt
 
 
+def indicador_anual(
+    dados: pd.DataFrame,
+    *,
+    rotulo: str,
+    cor: str,
+    ano: int,
+    coluna: str = "pct",
+    maximo: float | None = 100,
+    casas: int = 1,
+) -> dict:
+    """Indicador em percentual por ano, no formato dos Gráficos 10 a 13.
+
+    O boletim desenha esses indicadores sempre igual: barras por ano, eixo
+    fixo de 0 a 100 e o valor escrito em cima de cada barra. O eixo fixo é o
+    que permite comparar o gráfico de cura com o de abandono sem reler a
+    escala — e é também o que impede que uma variação de dois pontos pareça
+    um despencar, que é o risco do eixo automático.
+
+    Ano sem valor (coorte aberta) fica com a barra vazia em vez de sumir: a
+    lacuna é informação, e apagá-la daria a impressão de série que terminou.
+    """
+    opt = _base()
+    if dados.empty:
+        return _recado(opt, "Sem série para este recorte")
+    base = dados.sort_values("ano")
+    itens = [
+        {
+            "name": str(int(a)), "value": _valor(v),
+            "itemStyle": {"opacity": 1.0 if int(a) == int(ano) else 0.55},
+        }
+        for a, v in zip(base["ano"], base[coluna], strict=True)
+    ]
+    opt.update({
+        "grid": {"left": 56, "right": 16, "top": 24, "bottom": 32},
+        "xAxis": {
+            "type": "category", "data": [i["name"] for i in itens],
+            "axisLine": {"lineStyle": {"color": _COR_EIXO}},
+            "axisTick": {"show": False},
+            "axisLabel": {"fontSize": _FONTE_PX},
+        },
+        "yAxis": {**_eixo_valor(rotulo), "min": 0, **({"max": maximo} if maximo else {})},
+        "series": [{
+            "id": "indicador", "type": "bar", "data": itens,
+            "itemStyle": {"color": cor, "borderRadius": [3, 3, 0, 0]},
+            "barCategoryGap": "30%",
+            "label": {
+                "show": True, "position": "top",
+                "fontSize": _FONTE_PX, "casas": casas,
+            },
+        }],
+    })
+    opt["tooltip"].update({"rotuloValor": rotulo, "casas": casas})
+    return opt
+
+
 def epicurva(dados: pd.DataFrame, *, rotulo: str, cor: str, ano_em_foco: int | None = None) -> dict:
     """Série mensal contínua, atravessando os anos, com o ano em foco grosso.
 

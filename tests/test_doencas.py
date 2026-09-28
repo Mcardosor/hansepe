@@ -81,3 +81,20 @@ def test_app_nao_importa_pack_fixo() -> None:
         if isinstance(no, ast.ImportFrom) and no.module == "src.doencas"
     ]
     assert fixos == []
+
+
+@pytest.mark.parametrize("metrica", ["casos_0_14", "taxa_det_0_14"])
+def test_o_0_14_avisa_que_conta_todas_as_entradas(metrica: str) -> None:
+    """A régua do MS ao lado do 0–14 é definida sobre **casos novos**, e o
+    número não é de casos novos: a extração não cruza idade com modo de
+    entrada (paridade §1.1).
+
+    O tooltip já dizia isso de `casos_0_14`, mas concluía que "a diferença é
+    pequena nessa faixa" — medida em 28/set/2026, ela é de 8% a 22%. O teste
+    existe para que a ressalva não volte a sumir nem a virar diminutivo: quem
+    apagar o aviso tem de vir aqui apagá-lo também.
+    """
+    hanseniase = doencas.carregar("hanseniase")
+    texto = hanseniase.DESCRICOES[metrica].lower()
+    assert "entradas" in texto and "modo de entrada" in texto
+    assert "diferença é pequena" not in texto

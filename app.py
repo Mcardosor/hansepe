@@ -225,6 +225,11 @@ def _serie_classificacao(nivel: str, mun: str | None, macro, micro) -> pd.DataFr
 
 
 @st.cache_data(ttl=TTL_DADOS, show_spinner=False)
+def _serie_contatos(nivel: str, mun: str | None, macro, micro) -> pd.DataFrame:
+    return leitura.serie_contatos(_escopo(_anos()[-1], nivel, mun, macro, micro))
+
+
+@st.cache_data(ttl=TTL_DADOS, show_spinner=False)
 def _serie_0_14(nivel: str, mun: str | None, macro, micro) -> pd.DataFrame:
     return leitura.serie_0_14(_escopo(_anos()[-1], nivel, mun, macro, micro))
 
@@ -746,6 +751,44 @@ with resiliencia.painel("Indicadores de qualidade"), st.container(
 
 
 # ---------------------------------------------------------------------------
+# Contatos examinados — o Gráfico 10 do boletim
+# ---------------------------------------------------------------------------
+#
+# Até 28/set/2026 os contatos apareciam nos tópicos como a distribuição bruta
+# de `CONTEXAM`: uma barra para "1 contato examinado", outra para "2"… Era o
+# campo da ficha desenhado cru, e ninguém na vigilância pergunta quantos
+# casos tiveram exatamente três contatos examinados. O indicador é a
+# **proporção** de examinados entre os registrados, com a régua do MS ao
+# lado — foi o que a reunião com a Rafaela pediu, e é o Gráfico 10.
+
+with resiliencia.painel("Contatos examinados"), st.container(
+    border=True, key="cartao-contatos"
+):
+    st.markdown(
+        ui.titulo_painel(
+            "Proporção de contatos examinados entre os registrados",
+            ajuda="Soma dos contatos examinados dividida pela dos registrados, "
+                  "por ano de diagnóstico. Anos de coorte aberta ficam vazios: "
+                  "o exame de contatos acontece ao longo do acompanhamento.",
+        ),
+        unsafe_allow_html=True,
+    )
+    grafico_contatos, regua_contatos = st.columns([7, 3], vertical_alignment="top")
+    with grafico_contatos:
+        grafico_componente.desenhar(
+            grafico_componente.indicador_anual(
+                _serie_contatos(nav.nivel, nav.mun, nav.macro, nav.micro),
+                rotulo="Proporção (%)",
+                cor=pack.cor("contatos_pct"),
+                ano=nav.ano,
+            ),
+            altura=260, key="contatos-examinados",
+        )
+    with regua_contatos:
+        _quadro("contatos_pct", fonte=True)
+
+
+# ---------------------------------------------------------------------------
 # Linha 3: tópicos de interesse
 # ---------------------------------------------------------------------------
 
@@ -840,7 +883,11 @@ with resiliencia.painel("Séries anuais"), st.container(border=True, key="cartao
             ui.titulo_painel(
                 "Casos de 0 a 14 anos por ano",
                 ajuda="Casos em menores de 15 anos por ano de diagnóstico; a linha "
-                      "é a taxa por 100 mil habitantes dessa faixa etária.",
+                      "é a taxa por 100 mil habitantes dessa faixa etária. Conta "
+                      "todas as entradas no registro, não só casos novos: a "
+                      "extração não cruza idade com modo de entrada, e por isso "
+                      "a taxa fica acima da régua abaixo, que o Ministério "
+                      "define sobre casos novos.",
             ),
             unsafe_allow_html=True,
         )
