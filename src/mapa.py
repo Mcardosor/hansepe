@@ -695,6 +695,16 @@ def enquadrar(
     return {"center": centro, "zoom": max(2.0, min(zoom, 11.0))}
 
 
+#: Opacidade de quem **não** está na faixa clicada na legenda, de 0 a 255.
+#:
+#: Apagar os outros, e não contornar os escolhidos: o contorno some no meio de
+#: 185 municípios pequenos, e num mapa de endemicidade a pergunta é "onde
+#: estão os hiperendêmicos", que se responde melhor com o resto saindo de
+#: cena. 34 deixa a malha visível — sumir de vez tiraria a referência do
+#: desenho do estado —, mas sem competir com a faixa em foco.
+OPACIDADE_APAGADA = 34
+
+
 def _rgb(cor: str) -> list[int]:
     """`#RRGGBB` para `[r, g, b]`, que é como o deck.gl espera."""
     texto = cor.lstrip("#")
@@ -914,6 +924,7 @@ def deck(
     metodo: str = "NATURAL",
     cortes_fixos: list[float] | None = None,
     detalhes: list[tuple[str, pd.Series, str, int]] | None = None,
+    faixa_realcada: str | None = None,
 ):
     """Mapa em pydeck, para o drill-down por clique.
 
@@ -942,9 +953,16 @@ def deck(
         cortes_fixos=cortes_fixos,
         decimais=decimais,
     )
+    # Faixa que não existe nesta escala não apaga ninguém: o rótulo guardado
+    # da última interação continua no `session_state` quando a métrica ou a
+    # classificação muda, e sem esta linha o mapa inteiro sairia apagado.
+    if faixa_realcada is not None and faixa_realcada not in escala_.cores:
+        faixa_realcada = None
+
     dados["classe"] = classificar(dados["valor"], escala_)
     dados["cor"] = dados["classe"].map(
         lambda c: _rgb(escala_.cores.get(c, SEM_DADO))
+        + ([] if faixa_realcada in (None, c) else [OPACIDADE_APAGADA])
     )
     dados["exibicao"] = dados["valor"].map(
         lambda v: "—" if pd.isna(v) else _formatar(float(v), decimais)
@@ -1254,57 +1272,6 @@ def _template_detalhes(detalhes) -> str:
         f"border-radius:50%;background:{cor};margin-right:6px'></i>"
         f"{escape(rotulo)}</span><b>{{d{i}}}</b></div>"
         for i, (rotulo, _, cor, _) in enumerate(detalhes)
-    )
-
-
-def legenda(
-    escala: Escala,
-    titulo: str,
-    contagem: pd.Series | None = None,
-    nomes: tuple[str, ...] | None = None,
-    unidade: str = "",
-) -> str:
-    """Legenda em HTML — o deck.gl não desenha uma.
-
-    ``contagem`` (rótulo → n) põe ao lado de cada faixa quantas unidades
-    caem nela — substitui a tabela "regiões por classe" do painel de origem,
-    que repetia as faixas da legenda só para acrescentar o N. ``nomes`` dá
-    a cada classe o nome que a régua oficial usa ("Baixo", "Hiperendêmico"),
-    quando a escala é fixa e tem nome.
-
-    ``unidade`` nomeia o que está sendo contado — sem isso o número fica
-    solto ao lado da faixa e parece um terceiro valor, do tipo "< 2 · Baixo ·
-    51". Com ele, o cabeçalho diz "municípios por faixa" e a contagem entra
-    entre parênteses, que é como se lê um total.
-    """
-    from html import escape
-
-    def texto(i: int, r: str) -> str:
-        partes = [escape(r)]
-        if nomes and i < len(nomes):
-            partes.append(f"<em>{escape(nomes[i])}</em>")
-        corpo = " &nbsp;".join(partes)
-        if contagem is not None:
-            corpo += f' <span class="mapa-legenda-n">({int(contagem.get(r, 0))})</span>'
-        return corpo
-
-    rotulos = [*escala.rotulos, ROTULO_SEM_DADO]
-    itens = "".join(
-        f'<span class="mapa-legenda-item">'
-        f'<i style="background:{escape(escala.cores[r])}"></i>{texto(i, r)}</span>'
-        for i, r in enumerate(rotulos)
-        if r in escala.cores
-        # "sem dado" só aparece quando há alguém sem dado.
-        and (r != ROTULO_SEM_DADO or contagem is None or contagem.get(r, 0))
-    )
-    dica = (
-        f'<span class="mapa-legenda-dica">{escape(unidade)} por faixa</span>'
-        if unidade and contagem is not None
-        else ""
-    )
-    return (
-        f'<div class="mapa-legenda">'
-        f'<div class="mapa-legenda-titulo">{escape(titulo)}{dica}</div>{itens}</div>'
     )
 
 

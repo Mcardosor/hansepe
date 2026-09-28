@@ -1032,6 +1032,53 @@ def _fatorar_unidade(titulo: str, linhas: tuple[str, ...]):
     return f"{titulo} ({rotulo})", enxutas
 
 
+def titulo_legenda(titulo: str, unidade: str = "") -> str:
+    """Cabeçalho da legenda do mapa, agora que as faixas são botões.
+
+    Diz o que está pintado e o que a contagem entre parênteses conta — sem
+    isso o número ao lado de "< 2" parece um terceiro valor.
+    """
+    dica = (
+        f'<span class="mapa-legenda-dica">{escape(unidade)} por faixa</span>'
+        if unidade else ""
+    )
+    return (
+        f'<div class="mapa-legenda mapa-legenda-so-titulo">'
+        f'<div class="mapa-legenda-titulo">{escape(titulo)}{dica}</div></div>'
+    )
+
+
+def cores_das_faixas(chave: str, cores: list[str]) -> str:
+    """CSS que põe o quadradinho de cor em cada botão da legenda clicável.
+
+    A legenda do mapa virou um `st.pills` em 28/set/2026, para que clicar numa
+    faixa realce os municípios dela. O Streamlit desenha os botões, e a cor —
+    que é metade do que uma legenda diz — entra por aqui: um `::before` por
+    posição, na ordem em que as faixas foram passadas ao widget.
+
+    ``chave`` é a `key` do widget; o Streamlit marca o contêiner com
+    ``st-key-<key>``, e é esse o gancho.
+    """
+    regras = "\n".join(
+        f'.st-key-{chave} [data-testid="stButtonGroup"] '
+        f"button:nth-of-type({i + 1})::before {{ background: {cor}; }}"
+        for i, cor in enumerate(cores)
+    )
+    return (
+        "<style>\n"
+        f'.st-key-{chave} [data-testid="stButtonGroup"] button::before {{\n'
+        "  content: '';\n"
+        "  display: inline-block;\n"
+        "  width: 11px; height: 11px;\n"
+        "  margin-right: 7px;\n"
+        "  border-radius: 3px;\n"
+        "  border: 1px solid color-mix(in srgb, currentColor 18%, transparent);\n"
+        "}\n"
+        f"{regras}\n"
+        "</style>"
+    )
+
+
 def legenda_series(titulo: str, itens, fonte: str = "") -> str:
     """Legenda de séries na calha, para o gráfico que tem mais de uma.
 

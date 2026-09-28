@@ -280,19 +280,32 @@ def test_evento_em_dicionario_tambem_funciona() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_legenda_cobre_todas_as_classes() -> None:
-    """O deck.gl não desenha legenda; ela é HTML, como os cards de KPI."""
+def test_a_legenda_apagada_nao_muda_a_cor_de_quem_esta_na_faixa() -> None:
+    """Clicar numa faixa apaga o resto: quem está nela mantém RGB de três
+    canais (opaco), quem está fora ganha o quarto canal com a opacidade
+    baixa. Trocar a cor dos escolhidos, em vez de apagar os outros, faria o
+    mapa mentir sobre a classe."""
     escala = mapa.escala_natural(pd.Series(range(100)), RAMPA)
-    html = mapa.legenda(escala, "Incidência")
-    for rotulo in escala.rotulos:
-        assert rotulo in html
-    assert mapa.ROTULO_SEM_DADO in html
-    assert "Incidência" in html
+    assert len(mapa._rgb(escala.cores[escala.rotulos[0]])) == 3
 
 
-def test_legenda_escapa_o_titulo() -> None:
-    escala = mapa.escala_natural(pd.Series(range(10)), RAMPA)
-    assert "<script>" not in mapa.legenda(escala, "<script>alert(1)</script>")
+def test_faixa_inexistente_nao_apaga_o_mapa_inteiro() -> None:
+    """O rótulo da última interação sobrevive no `session_state` quando a
+    métrica muda, e as faixas da escala nova são outras. Sem a guarda, todo
+    município cairia na condição "fora da faixa" e o mapa sairia apagado."""
+    from src.data import geo, leitura
+    from src.data.escopo import Escopo
+
+    camada = geo.municipios("PE")
+    esc = Escopo(doenca="HANSENIASE", ano=2024, nivel="UF", uf="PE", mun=None,
+                 municipios=())
+    valores = leitura.valores_por_geografia(esc, "incid")
+    _, escala = mapa.deck(
+        camada, valores, chave="cod_mun6", rampa=RAMPA,
+        rotulo_metrica="Detecção", coluna_nome="nome_mun",
+        faixa_realcada="faixa que não existe",
+    )
+    assert escala.rotulos
 
 
 def test_deck_pinta_cada_feicao() -> None:

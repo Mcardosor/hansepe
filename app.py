@@ -277,6 +277,17 @@ def _ao_mudar_metrica() -> None:
         st.session_state["metrica_sel"] = nav.metrica
 
 
+def _ao_clicar_na_legenda() -> None:
+    """Guarda a faixa realçada **antes** do mapa ser desenhado.
+
+    A legenda fica embaixo do mapa que ela comanda. Lido no ponto do widget,
+    o clique só chegaria ao mapa no rerun seguinte — é o mesmo tropeço dos
+    cards acima do seletor de métrica, em 21/set/2026. Clicar na faixa já
+    marcada desmarca, e o mapa volta inteiro.
+    """
+    st.session_state["faixa_realcada"] = st.session_state.get("faixa_legenda")
+
+
 if st.session_state.get("metrica_sel") != nav.metrica:
     # Primeira passada, ou a métrica mudou por outro caminho: o widget
     # segue `nav`, nunca o contrário.
@@ -524,6 +535,7 @@ with esquerda:
                 metodo=classificacao,
                 cortes_fixos=pack.cortes_fixos(nav.metrica),
                 detalhes=_detalhes_tooltip(nav.ano, nav.metrica, recorte_mapa, nav.macro),
+                faixa_realcada=st.session_state.get("faixa_realcada"),
             )
             # Componente próprio, com `key` **estável**: é o que mantém o deck
             # vivo entre reruns e faz a câmera voar de um recorte ao outro em
@@ -536,16 +548,49 @@ with esquerda:
             # só para acrescentar a contagem — em quintis ela é sempre 37, e
             # em endemicidade é onde o número diz algo ("9 hiperendêmicos").
             contagem = mapa.classificar(serie_mapa, escala).value_counts()
+
+            # A legenda é clicável desde 28/set/2026 (pedido da reunião):
+            # clicar numa faixa apaga o resto do mapa, e clicar de novo
+            # devolve. Ela é um `st.pills` e não mais HTML puro — os
+            # quadradinhos de cor, que o widget não tem, entram por CSS.
+            faixas = [r for r in escala.rotulos if r in escala.cores]
+            nomes_faixa = (
+                pack.nomes_fixos(nav.metrica) if classificacao == "FIXA" else None
+            )
+
+            def _rotulo_faixa(r: str, _nomes=nomes_faixa, _faixas=faixas) -> str:
+                nome = ""
+                if _nomes and r in _faixas:
+                    indice = _faixas.index(r)
+                    if indice < len(_nomes):
+                        nome = f"  {_nomes[indice]}"
+                return f"{r}{nome}  ({int(contagem.get(r, 0))})"
+
             st.markdown(
-                mapa.legenda(
-                    escala,
+                ui.titulo_legenda(
                     pack.rotulo(nav.metrica),
-                    contagem=contagem,
-                    nomes=pack.nomes_fixos(nav.metrica) if classificacao == "FIXA" else None,
-                    unidade=UNIDADE_RECORTE[recorte_mapa].capitalize(),
+                    UNIDADE_RECORTE[recorte_mapa].capitalize(),
                 ),
                 unsafe_allow_html=True,
             )
+            st.markdown(
+                ui.cores_das_faixas("faixa_legenda", [escala.cores[r] for r in faixas]),
+                unsafe_allow_html=True,
+            )
+            st.pills(
+                "Faixa em destaque",
+                faixas,
+                format_func=_rotulo_faixa,
+                selection_mode="single",
+                key="faixa_legenda",
+                on_change=_ao_clicar_na_legenda,
+                label_visibility="collapsed",
+            )
+            sem_dado = int(contagem.get(mapa.ROTULO_SEM_DADO, 0))
+            if sem_dado:
+                st.caption(
+                    f"{sem_dado} {UNIDADE_RECORTE[recorte_mapa]} sem dado, em cinza."
+                )
 
             alvo, nonce = mapa_componente.alvo_do_clique(
                 evento, st.session_state.get("clique_mapa")
