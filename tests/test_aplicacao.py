@@ -141,9 +141,22 @@ def test_toda_variavel_da_composicao_monta() -> None:
     from src.doencas import hanseniase as pack
 
     at = _rodar()
-    multi = next(m for m in at.multiselect if m.label == "Variáveis")
+    multi = next(m for m in at.multiselect if m.label == "O que exibir")
     multi.set_value(list(pack.variaveis_planas())).run()
     _conferir(at, "todas as variáveis")
+
+
+def test_o_seletor_governa_o_cartao_inteiro() -> None:
+    """Os indicadores do boletim entraram no mesmo seletor das variáveis da
+    ficha (29/set/2026): ficavam fixos, e limpar o seletor deixava quatro
+    gráficos órfãos numa caixa que dizia "escolha o que exibir". Esvaziar
+    agora esvazia o cartão."""
+    at = _rodar()
+    multi = next(m for m in at.multiselect if m.label == "O que exibir")
+    assert len(multi.value) == 7  # 4 indicadores + 3 distribuições do boletim
+    multi.set_value([]).run()
+    _conferir(at, "cartão vazio")
+    assert any("Nada escolhido" in c.value for c in at.caption if c.value)
 
 
 def test_os_sete_cards_aparecem_com_numero() -> None:

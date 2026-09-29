@@ -24,6 +24,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pandas as pd
 import pytest
 
 from src.data import kpis as calc
@@ -310,34 +311,45 @@ def test_regioes_de_saude_batem_com_as_geres(geres: str):
 # --- 3. contatos examinados: o gráfico e o card contam a mesma coisa --------
 
 
-def test_a_serie_de_contatos_bate_com_o_card_no_mesmo_ano():
-    """O gráfico do Gráfico 10 e o card de qualidade saem de contas escritas
-    em lugares diferentes — `leitura.serie_contatos` e `kpis.calcular` — e é
+def test_a_serie_de_qualidade_bate_com_os_cards_no_mesmo_ano():
+    """Os Gráficos 10 a 13 e os cards de qualidade saem de contas escritas em
+    lugares diferentes — `leitura.serie_qualidade` e `kpis.calcular` — e é
     exatamente assim que dois números do mesmo indicador se separam na mesma
-    tela. O teste amarra os dois.
+    tela. O teste amarra os quatro.
     """
     from src.data import leitura
 
     esc = Escopo(doenca="HANSENIASE", ano=2024, nivel="UF", uf="PE", mun=None,
                  municipios=())
-    serie = leitura.serie_contatos(esc).set_index("ano")
+    serie = leitura.serie_qualidade(esc).set_index("ano").loc[2024]
     card = calc.calcular(esc)
-    assert serie.loc[2024, "pct"] == pytest.approx(card.contatos_pct, rel=1e-9)
-    assert serie.loc[2024, "examinados"] == pytest.approx(card.contatos_examinados)
-    assert serie.loc[2024, "registrados"] == pytest.approx(card.contatos_registrados)
+    for coluna, do_card in (
+        ("contatos_pct", card.contatos_pct),
+        ("cura_pct", card.cura_pct),
+        ("abandono_pct", card.abandono_pct),
+        ("gif_avaliado_pct", card.gif_avaliado_pct),
+        ("grau2_pct", card.prop_grau2_pct),
+    ):
+        assert float(serie[coluna]) == pytest.approx(do_card, rel=1e-9), coluna
+    assert serie["examinados"] == pytest.approx(card.contatos_examinados)
+    assert serie["registrados"] == pytest.approx(card.contatos_registrados)
 
 
-def test_a_serie_de_contatos_suprime_a_coorte_aberta():
-    """2025 não pode aparecer no gráfico com um percentual: o exame de
-    contatos se acumula ao longo do acompanhamento, e o ano corrente mostraria
-    uma queda que é do calendário. O boletim publica só coortes fechadas."""
+def test_a_serie_de_qualidade_suprime_a_coorte_aberta():
+    """2025 não pode aparecer com percentual de acompanhamento: contatos,
+    cura e abandono se acumulam ao longo do tratamento, e o ano corrente
+    mostraria uma queda que é do calendário. O grau de incapacidade fica: é
+    preenchido no diagnóstico, e suprimi-lo esconderia dado que já existe."""
     from src.data import leitura
 
     esc = Escopo(doenca="HANSENIASE", ano=2025, nivel="UF", uf="PE", mun=None,
                  municipios=())
-    serie = leitura.serie_contatos(esc).set_index("ano")
-    assert serie.loc[2025, "pct"] != serie.loc[2025, "pct"]  # NaN
-    assert serie.loc[2024, "pct"] > 0
+    serie = leitura.serie_qualidade(esc).set_index("ano")
+    for coluna in ("contatos_pct", "cura_pct", "abandono_pct"):
+        assert pd.isna(serie.loc[2025, coluna]), coluna
+        assert serie.loc[2024, coluna] > 0, coluna
+    assert serie.loc[2025, "gif_avaliado_pct"] > 0
+    assert serie.loc[2025, "grau2_pct"] > 0
 
 
 def test_contatos_saiu_dos_topicos_de_interesse():

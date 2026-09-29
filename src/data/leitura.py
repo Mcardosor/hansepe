@@ -1145,25 +1145,23 @@ def serie_classificacao_operacional(esc: Escopo) -> pd.DataFrame:
     return df
 
 
-def serie_contatos(esc: Escopo) -> pd.DataFrame:
-    """Proporção de contatos examinados entre os registrados, por ano.
+def serie_qualidade(esc: Escopo) -> pd.DataFrame:
+    """Os indicadores de acompanhamento do programa, ano a ano.
 
-    É o Gráfico 10 do boletim estadual — o indicador que a vigilância cobra,
-    e que substituiu na tela a distribuição bruta de ``CONTEXAM`` (quantos
-    casos tiveram 0, 1, 2… contatos examinados), que era o campo da ficha
-    desenhado cru e não respondia pergunta nenhuma.
+    É o que os Gráficos 10 a 13 do boletim publicam, na mesma conta dos cards
+    de qualidade: contatos examinados sobre registrados, cura e abandono sobre
+    as saídas, GIF avaliado e GIF II sobre os casos.
 
-    ``CONTEXAM`` e ``CONTREG`` guardam a **quantidade** por caso, não um
-    código: a linha ``valor = "3", n = 317`` são 317 casos com três contatos.
-    O total do ano é a soma ponderada, como em :func:`soma_ponderada`.
+    Colunas ``ano``, ``examinados``, ``registrados``, ``contatos_pct``,
+    ``cura_pct``, ``abandono_pct``, ``gif_avaliado_pct`` e ``grau2_pct``.
 
-    Colunas ``ano``, ``examinados``, ``registrados``, ``pct``.
+    **Coorte aberta zera só os três de acompanhamento** — contatos, cura e
+    abandono —, pela mesma regra dos cards (`kpis.COBERTURA_MINIMA_COORTE`).
+    O grau de incapacidade é preenchido **no diagnóstico**, não ao longo do
+    tratamento: suprimi-lo no ano corrente esconderia dado que já existe.
 
-    **Anos de coorte aberta saem com ``pct`` nulo**, pela mesma regra dos
-    cards (`kpis.COBERTURA_MINIMA_COORTE`): exame de contato acontece ao
-    longo do acompanhamento, então o ano que acabou de começar mostraria uma
-    cobertura baixa que é do calendário, não do programa. O boletim faz o
-    mesmo ao publicar só coortes fechadas (2019–2024).
+    ``CONTEXAM`` e ``CONTREG`` guardam a quantidade por caso, não um código,
+    então o total do ano é a soma ponderada — ver :func:`soma_ponderada`.
     """
     from . import kpis
 
@@ -1179,7 +1177,13 @@ def serie_contatos(esc: Escopo) -> pd.DataFrame:
                    FILTER (WHERE variavel = 'CONTEXAM') AS examinados,
                sum(TRY_CAST(trim(valor) AS DOUBLE) * n)
                    FILTER (WHERE variavel = 'CONTREG') AS registrados,
-               sum(n) FILTER (WHERE variavel = 'TPALTA_N') AS saidas
+               sum(n) FILTER (WHERE variavel = 'TPALTA_N') AS saidas,
+               sum(n) FILTER (
+                   WHERE variavel = 'TPALTA_N' AND trim(valor) = '{CURA_TPALTA}'
+               ) AS curas,
+               sum(n) FILTER (
+                   WHERE variavel = 'TPALTA_N' AND trim(valor) = '{ABANDONO_TPALTA}'
+               ) AS abandonos
         FROM read_parquet('{fonte}', hive_partitioning=true)
         WHERE variavel IN ('CONTEXAM', 'CONTREG', 'TPALTA_N') AND sexo = 'TOTAL'
     """
@@ -1187,16 +1191,64 @@ def serie_contatos(esc: Escopo) -> pd.DataFrame:
         sql += f" AND {onde_geo}"
     df = conectar().execute(sql + " GROUP BY ano ORDER BY ano", list(params_geo)).fetchdf()
     if df.empty:
-        return pd.DataFrame(columns=["ano", "examinados", "registrados", "pct"])
-
-    casos = serie_anual_casos_totais(esc).set_index("ano")["casos"]
+        return pd.DataFrame(columns=COLUNAS_QUALIDADE)
     df["ano"] = df["ano"].astype(int)
-    cobertura = df["ano"].map(casos).astype("Float64")
-    cobertura = df["saidas"].astype("Float64") / cobertura.replace(0, pd.NA)
 
-    df["pct"] = 100 * df["examinados"] / df["registrados"].replace(0, pd.NA)
-    df.loc[cobertura < kpis.COBERTURA_MINIMA_COORTE, "pct"] = pd.NA
-    return df[["ano", "examinados", "registrados", "pct"]]
+    graus = _serie_graus(esc).set_index("ano")
+    casos = graus["casos"].reindex(df["ano"]).to_numpy()
+    saidas = df["saidas"].astype("Float64")
+    cobertura = saidas / pd.Series(casos, index=df.index).replace(0, pd.NA)
+    aberta = cobertura < kpis.COBERTURA_MINIMA_COORTE
+
+    df["contatos_pct"] = 100 * df["examinados"] / df["registrados"].replace(0, pd.NA)
+    df["cura_pct"] = 100 * df["curas"] / saidas.replace(0, pd.NA)
+    df["abandono_pct"] = 100 * df["abandonos"] / saidas.replace(0, pd.NA)
+    df.loc[aberta, ["contatos_pct", "cura_pct", "abandono_pct"]] = pd.NA
+
+    # Grau de incapacidade: preenchido no diagnóstico, então não depende da
+    # coorte fechar. `gif_avaliado_pct` é sobre todos os casos (é cobertura de
+    # preenchimento); `grau2_pct` repete o denominador da origem, que inclui
+    # "não avaliado" — ver docs/paridade-hanseniase.md §2.
+    for coluna in ("avaliados", "base_grau2", "grau_II"):
+        df[coluna] = graus[coluna].reindex(df["ano"]).to_numpy()
+    df["gif_avaliado_pct"] = 100 * df["avaliados"] / pd.Series(casos, index=df.index).replace(0, pd.NA)
+    df["grau2_pct"] = 100 * df["grau_II"] / df["base_grau2"].replace(0, pd.NA)
+    return df[COLUNAS_QUALIDADE]
+
+
+#: Código de `TPALTA_N` para cura e para abandono.
+CURA_TPALTA = "1"
+ABANDONO_TPALTA = "7"
+
+#: O que :func:`serie_qualidade` devolve, na ordem.
+COLUNAS_QUALIDADE = [
+    "ano", "examinados", "registrados", "contatos_pct",
+    "cura_pct", "abandono_pct", "gif_avaliado_pct", "grau2_pct",
+]
+
+
+def _serie_graus(esc: Escopo) -> pd.DataFrame:
+    """Casos e graus de incapacidade por ano, do `incidence`.
+
+    ``casos`` conta **todas as entradas**: é o denominador com que as saídas
+    se comparam para saber se a coorte fechou, e o que a origem usa no grau.
+    """
+    particao, onde, params = particao_e_filtro_geo(esc, col_mun="cod_mun6")
+    fonte = caminho(
+        "incidence", doenca=config.cod_agregado(esc.doenca), nivel=particao
+    )
+    sql = f"""
+        SELECT ano,
+               sum(casos_total) AS casos,
+               sum(casos_grau_0) + sum(casos_grau_I) + sum(casos_grau_II) AS avaliados,
+               sum(casos_grau_0) + sum(casos_grau_I) + sum(casos_grau_II)
+                   + sum(casos_nao_avaliado) AS base_grau2,
+               sum(casos_grau_II) AS grau_II
+        FROM read_parquet('{fonte}', hive_partitioning=true)
+    """
+    if onde:
+        sql += f" WHERE {onde}"
+    return conectar().execute(sql + " GROUP BY ano ORDER BY ano", list(params)).fetchdf()
 
 
 def serie_anual_casos_totais(esc: Escopo) -> pd.DataFrame:

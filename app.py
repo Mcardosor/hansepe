@@ -236,8 +236,8 @@ def _serie_classificacao(nivel: str, mun: str | None, macro, micro) -> pd.DataFr
 
 
 @st.cache_data(ttl=TTL_DADOS, show_spinner=False)
-def _serie_contatos(nivel: str, mun: str | None, macro, micro) -> pd.DataFrame:
-    return leitura.serie_contatos(_escopo(_anos()[-1], nivel, mun, macro, micro))
+def _serie_qualidade(nivel: str, mun: str | None, macro, micro) -> pd.DataFrame:
+    return leitura.serie_qualidade(_escopo(_anos()[-1], nivel, mun, macro, micro))
 
 
 @st.cache_data(ttl=TTL_DADOS, show_spinner=False)
@@ -902,43 +902,6 @@ with resiliencia.painel("Indicadores de qualidade"), st.container(
 
 
 # ---------------------------------------------------------------------------
-# Contatos examinados — o Gráfico 10 do boletim
-# ---------------------------------------------------------------------------
-#
-# Até 28/set/2026 os contatos apareciam nos tópicos como a distribuição bruta
-# de `CONTEXAM`: uma barra para "1 contato examinado", outra para "2"… Era o
-# campo da ficha desenhado cru, e ninguém na vigilância pergunta quantos
-# casos tiveram exatamente três contatos examinados. O indicador é a
-# **proporção** de examinados entre os registrados, com a régua do MS ao
-# lado — foi o que a reunião com a Rafaela pediu, e é o Gráfico 10.
-
-with resiliencia.painel("Contatos examinados"), st.container(
-    border=True, key="cartao-contatos"
-):
-    grafico_contatos, regua_contatos = _com_calha(
-        "Proporção de contatos examinados entre os registrados",
-        ajuda="Soma dos contatos examinados dividida pela dos registrados, "
-              "por ano de diagnóstico. Anos de coorte aberta ficam vazios: "
-              "o exame de contatos acontece ao longo do acompanhamento.",
-    )
-    with grafico_contatos:
-        grafico_componente.desenhar(
-            grafico_componente.indicador_anual(
-                _recortar(_serie_contatos(nav.nivel, nav.mun, nav.macro, nav.micro)),
-                rotulo="Proporção (%)",
-                cor=pack.COR_BOLETIM,
-                ano=nav.ano,
-                # Linha, e não barra: o Gráfico 10 do boletim é uma linha com
-                # marcador quadrado. Barra dava a impressão de contagem.
-                tipo="linha",
-            ),
-            altura=260, key="contatos-examinados",
-        )
-    with regua_contatos:
-        _quadro("contatos_pct", fonte=True)
-
-
-# ---------------------------------------------------------------------------
 # Linha 3: tópicos de interesse
 # ---------------------------------------------------------------------------
 
@@ -1010,22 +973,135 @@ def _desenhar_topico(variavel: str, rotulo: str) -> None:
         )
 
 
+#: Os indicadores do programa que viram gráfico, e o rótulo no seletor.
+#:
+#: Entram no **mesmo** seletor das variáveis da ficha desde 29/set/2026:
+#: estavam fixos dentro do cartão dos tópicos, e limpar o seletor deixava
+#: quatro gráficos órfãos numa caixa que dizia "escolha o que exibir".
+INDICADORES_EM_SERIE = {
+    "contatos_pct": "Contatos examinados (%)",
+    "gif_avaliado_pct": "GIF avaliado no diagnóstico (%)",
+    "grau2_pct": "GIF II no diagnóstico (%)",
+    "cura_abandono": "Cura e abandono (%)",
+}
+
+
+def _desenhar_indicador(chave: str, serie: pd.DataFrame) -> None:
+    """Um dos Gráficos 10 a 13 do boletim, com a régua do MS na calha."""
+    if chave == "cura_abandono":
+        grafico, calha = _com_calha(
+            "Proporção de cura e de abandono de tratamento",
+            ajuda="Saídas por cura e por abandono sobre todas as saídas "
+                  "registradas no ano de diagnóstico. O boletim fecha a coorte "
+                  "(PB do ano anterior, MB de dois anos antes), que só o "
+                  "microdado permite; ver docs/paridade-hanseniase.md §8.",
+        )
+        with grafico:
+            grafico_componente.desenhar(
+                grafico_componente.comparativo_anual(
+                    serie,
+                    series={
+                        "cura_pct": ("% Cura", pack.COR_BOLETIM),
+                        "abandono_pct": ("% Abandono", pack.COR_BOLETIM_SECUNDARIA),
+                    },
+                ),
+                altura=300, key="cura-abandono",
+            )
+        with calha:
+            # Duas caixas, como no boletim: as réguas são diferentes, e a do
+            # abandono corre ao contrário — lá, "Bom" é o valor **baixo**.
+            _quadro("cura_pct")
+            _quadro("abandono_pct", fonte=True)
+        return
+
+    titulo, ajuda, metrica, tipo = {
+        "contatos_pct": (
+            "Proporção de contatos examinados entre os registrados",
+            "Soma dos contatos examinados dividida pela dos registrados, por "
+            "ano de diagnóstico. Anos de coorte aberta ficam vazios: o exame "
+            "de contatos acontece ao longo do acompanhamento.",
+            "contatos_pct",
+            # Linha, e não barra: o Gráfico 10 do boletim é uma linha com
+            # marcador quadrado. Barra dava a impressão de contagem.
+            "linha",
+        ),
+        "gif_avaliado_pct": (
+            "Proporção de casos com grau de incapacidade avaliado no diagnóstico",
+            "Casos com grau 0, I ou II registrado, sobre o total de casos. "
+            "Mede preenchimento da ficha, não gravidade.",
+            "gif_avaliado_pct",
+            "barra",
+        ),
+        "grau2_pct": (
+            "Proporção de casos com grau de incapacidade física II no diagnóstico",
+            "Grau II sobre os casos com o campo de avaliação preenchido, "
+            "incluindo 'não avaliado' — o denominador do painel de origem.",
+            "prop_grau2_pct",
+            "barra",
+        ),
+    }[chave]
+
+    grafico, calha = _com_calha(titulo, ajuda=ajuda)
+    with grafico:
+        grafico_componente.desenhar(
+            # Eixo em 0–100 como no boletim, e não colado nos valores: o grau
+            # II anda entre 5% e 13%, e um eixo automático faria essa faixa
+            # ocupar a tela inteira.
+            grafico_componente.indicador_anual(
+                serie,
+                coluna=chave,
+                rotulo="Proporção (%)",
+                cor=pack.COR_BOLETIM,
+                ano=nav.ano,
+                tipo=tipo,
+            ),
+            altura=260, key=f"indicador-{chave}",
+        )
+    with calha:
+        _quadro(metrica, fonte=chave == "contatos_pct")
+        if chave == "gif_avaliado_pct":
+            # O Gráfico 11 tem **duas** séries: avaliado no diagnóstico e na
+            # cura. A segunda exige cruzar o grau com o desfecho caso a caso,
+            # e a extração agregada não cruza — dizer isso é melhor que
+            # desenhar meio gráfico e deixar quem conhece o boletim
+            # procurando a barra que falta. Ver docs/pedido-microdado.md.
+            st.caption(
+                "O boletim traz também o **% avaliado na cura**, que depende "
+                "do microdado: a extração não cruza grau de incapacidade com "
+                "desfecho de tratamento."
+            )
+
+
 with resiliencia.painel("Tópicos de interesse"), st.container(border=True, key="cartao-composicao"):
     st.markdown(ui.titulo_painel("Tópicos de interesse", ajuda=AJUDA_TOPICOS), unsafe_allow_html=True)
     planas = pack.variaveis_planas()
+    # Um seletor só para o cartão inteiro: os indicadores do boletim primeiro,
+    # depois as variáveis da ficha. Dois grupos numa lista só, e não dois
+    # seletores, porque o que o usuário decide é a mesma coisa nos dois casos
+    # — o que aparece nesta caixa.
     escolhidas = st.multiselect(
-        "Variáveis",
-        list(planas),
-        default=list(pack.VARIAVEIS_DESTAQUE),
-        format_func=lambda v: planas[v],
+        "O que exibir",
+        [*INDICADORES_EM_SERIE, *planas],
+        default=[*INDICADORES_EM_SERIE, *pack.VARIAVEIS_DESTAQUE],
+        format_func=lambda c: INDICADORES_EM_SERIE.get(c) or planas[c],
         label_visibility="collapsed",
-        placeholder="Escolha as variáveis a exibir",
+        placeholder="Escolha os indicadores e as variáveis a exibir",
     )
     if not escolhidas:
-        st.caption("Nenhuma variável escolhida. Use o campo acima para trazer as que interessam.")
+        st.caption("Nada escolhido. Use o campo acima para trazer o que interessa.")
     else:
-        for variavel in escolhidas:
-            _desenhar_topico(variavel, planas[variavel])
+        # A série dos indicadores é uma consulta só, e só acontece se algum
+        # deles estiver na tela.
+        serie_indicadores = (
+            _recortar(_serie_qualidade(nav.nivel, nav.mun, nav.macro, nav.micro))
+            if any(c in INDICADORES_EM_SERIE for c in escolhidas)
+            else pd.DataFrame()
+        )
+        for escolha in escolhidas:
+            if escolha in INDICADORES_EM_SERIE:
+                _desenhar_indicador(escolha, serie_indicadores)
+            else:
+                _desenhar_topico(escolha, planas[escolha])
 
 
 # ---------------------------------------------------------------------------
