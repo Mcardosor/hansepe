@@ -14,8 +14,9 @@ novos e taxa de detecção, que seguem a definição do Ministério
 Herda o core do painel nacional (`../sinan`: leitores, `Escopo`,
 navegação PE → macro → região de saúde → município, `recortes.py`) e a
 composição de tela do RecifeTB (`mapa.py` com três classificações,
-`canal.py`, `theme/`). O método está em `docs/como-fazer.md`, cópia da receita
-do painel nacional.
+`canal.py`, `theme/`). A receita de como se faz um painel desta família mora
+no painel nacional, em `../sinan/docs/como-fazer.md` — é leitura, não
+dependência: nada aqui a importa.
 
 Documentação, código, commits e comentários em português.
 

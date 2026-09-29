@@ -29,8 +29,8 @@ def _uma_linha(sql: str, params: list) -> dict:
 def incidencia(esc: Escopo) -> dict:
     """Linha de ``incidence`` para o recorte: casos, cura, população, incidência.
 
-    Atenção: ``casos_obitos`` deste dataset é zero para tuberculose em todos os
-    anos. Use :func:`obitos_sim`. Ver docs/contrato-dados.md, armadilha 1.
+    ``casos_obitos`` daqui não é confiável — vem zerado para algumas doenças
+    em todos os anos. Óbito se lê do SIM, por :func:`obitos_sim`.
     """
     fonte = caminho(
         "incidence",

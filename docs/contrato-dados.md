@@ -1,5 +1,13 @@
 # Contrato de dados
 
+> **Escopo:** este arquivo veio do painel nacional, que serve cinco doenças.
+> Em 29/set/2026 foi podado para o que **este** painel lê — saíram os datasets
+> de tuberculose e as armadilhas de `SITUA_ENCE`, campo que a ficha de
+> hanseníase não tem e que o código deixou de consultar. A numeração das
+> armadilhas **não** foi refeita: o código cita algumas pelo número, e
+> renumerar quebraria essas referências em silêncio. Os buracos na sequência
+> são o registro do que saiu.
+
 Levantado a partir do projeto original em R, validado com queries DuckDB direto
 nos parquets. Todos os números abaixo foram conferidos, não inferidos.
 
@@ -28,8 +36,6 @@ esse recorte só existe para PE. Copie para `data/support/`.
 | `cache_ts_sim_obitos` | 65 k | `nivel/doenca/ano` | Óbitos do SIM, mensais |
 | `obitos_sim_faixa` | 57 k | `doenca/nivel/ano` | Óbitos do SIM por sexo e faixa etária |
 | `cases_new` | 205 k | `doenca/ano` | Casos novos por `cod_mun6` |
-| `indicadores_tb_contatos` | 54 k | — | TB: contatos identificados vs examinados |
-| `indicadores_tb_cultura_retratamento` | 27 k | — | TB: cultura em casos de retratamento |
 | `_geo_cache/` | 652 MB | `municipios/uf=XX/` | GeoJSON por UF + `municipios_centroids.parquet` |
 
 A ordem das partições **não é uniforme** e a diferença é sutil: `cache_ts_sim_obitos`
@@ -57,13 +63,6 @@ Sobre `interrupcao`, ver a armadilha 4.
 
 ## Armadilhas
 
-### 1. `casos_obitos` é zero para tuberculose
-
-Em `incidence`, todos os anos de 2010 a 2025. Calcular mortalidade ou letalidade
-a partir desse campo dá zero. Os óbitos reais estão em `cache_ts_sim_obitos`
-(73.409 óbitos por TB entre 2010 e 2024). São fontes distintas — SINAN vs SIM — e
-o merge é responsabilidade da aplicação.
-
 ### 2. O código da doença muda entre datasets
 
 | Dataset | Hanseníase | Dengue |
@@ -83,110 +82,11 @@ verificado em hexadecimal: `" 1"` = `0x2031`, `" 2"` = `0x2032`. A exceção é
 silenciosamente. O `sinan_dict` agrava: registra `" 3"` e `"03"` como entradas
 distintas.
 
-### 4. O indicador de interrupção diverge do padrão do MS
-
-O projeto em R conta apenas `SITUA_ENCE = 2` (abandono) e usa **todos** os
-encerramentos no denominador, incluindo `5` (transferência), `7` e `8`.
-
-O padrão do Ministério da Saúde soma `2` + `10` (abandono primário) e exclui os
-não avaliados do denominador.
-
-Para TB/PE/2024: **11,89% pela regra do R, 14,75% pelo padrão do MS.**
-
-Não é bug de programação, é escolha metodológica — mas precisa ser decidida antes
-de fixar as referências de paridade. Ver `tests/paridade/excecoes.md`.
-
-**Atualização de 2026-08-20 — há duas regras do MS, não uma.** O Boletim
-Epidemiológico de TB 2026 publica, na Tabela 9, a interrupção como **coluna
-irmã** de cura e de "não avaliados", as três sobre a mesma base — o que só
-fecha com o denominador completo. Isso não contradiz o parágrafo acima: o
-indicador de monitoramento do Ministério exclui os não avaliados, e a tabela
-apresenta distribuição de desfechos. São perguntas diferentes.
-
-O código passou a ter as três:
-
-| Regra | Numerador | Denominador | Brasil 2024 |
-|---|---|---|---:|
-| `paridade` | `{2}` | todos | 14,91% |
-| `ms` | `{2,10}` | avaliados | 17,20% |
-| `boletim` | `{2,10}` | todos | 15,52% |
-
-A Tabela 9 publica **15,2%**, e é `boletim` que a reproduz. Os 0,32 pontos
-restantes são a defasagem de extração: nosso denominador tem 75.404
-encerramentos e as porcentagens do MS implicam 77.467, com a diferença
-concentrada em "não avaliados" — 9,7% aqui contra 12,6% lá.
-
-**Cuidado com a população.** A Tabela 9 traz três: todos os casos novos de TB
-(86.204), só pulmonar (74.885) e pulmonar confirmada em laboratório (56.388),
-com interrupção de 15,2%, 15,9% e 16,5%. A nossa é a primeira. Comparar o
-nosso número com 16,5% é comparar populações diferentes — engano que já se
-cometeu aqui e custou uma investigação.
-
-### 5. `SITUA_ENCE` já vem reagrupado
-
-Os rótulos foram achatados em Favorável / Desfavorável / Não avaliado. Os códigos
-`2` (abandono), `3` e `4` (óbitos) e `9` (falência) aparecem todos como
-"Desfavorável". Para separar óbito de abandono, use o **código**, nunca o
-`valor_lbl`.
-
-### 13. O código de `SITUA_ENCE` tem zero à esquerda em alguns anos
-
-`03` e `04` convivem com `3` e `4` no mesmo dataset — só em 2018 e 2019, 177
-registros no Brasil. O `trim` da armadilha 3 **não** resolve isso: ele tira o
-espaço, não o zero.
-
-Um filtro por `{"3", "4"}` perde esses óbitos em silêncio, e eles vão parar em
-qualquer balde que sirva de resto. Normalize com `lstrip("0")` antes de
-comparar, preservando o `"0"` sozinho — que existe e é outra coisa (ver
-abaixo). `kpis.grupo_do_desfecho()` é o único lugar que faz isso; use-o.
-
-### 14. Existe um `SITUA_ENCE = 0` (Ignorado), e ele some em 2018
-
-De 2010 a 2017 há um código `0` com volume relevante — 2.711 registros em 2015,
-13.359 no total. Em 2018 caem para 47 e depois zeram, o que parece melhora de
-preenchimento, não mudança de código.
-
-Ele **não é encerramento favorável**. Tratá-lo como cura inflaria justamente os
-anos antigos, que são a base de qualquer comparação temporal. O indicador de
-monitoramento do MS já o excluía do denominador (ver armadilha 4); o empilhado
-de desfechos o conta em "não avaliados e outros".
-
 ### 15. `geo_id = '000000'` existe e tem dado
 
 É o balde de município ignorado, e traz encerramentos de verdade. Um teste que
 usa `000000` esperando recorte vazio passa por engano — use um código que não
 exista, como `999999`.
-
-### 16. `SITUA_ENCE` perdeu a categoria "não informado" a partir de 2018
-
-**É defeito de extração da equipe parceira, medido contra o SINAN bruto.**
-
-| Ano | Fonte (`silver.tuberculose`) | Nosso parquet (código `0`) |
-|---|---:|---:|
-| 2015 | 2.716 | 2.711 |
-| 2017 | 2.177 | 2.155 |
-| **2018** | 2.087 | **47** |
-| 2019 a 2023 | 1.921 a 2.706 | **0** |
-| **2024** | **4.264** | **0** |
-
-Até 2017 o balde vinha fiel, com a diferença de dezenas que se espera entre
-duas extrações. Em 2018 ele colapsa e a partir de 2019 some.
-
-**Efeito:** o denominador de qualquer proporção de encerramento encolhe, então
-cura, interrupção e óbito aparecem **maiores** do que são. Medido para a cura
-no Brasil, contra a mesma conta feita na fonte:
-
-| | até 2017 | de 2018 em diante |
-|---|---|---|
-| Nosso desvio | −0,2 a −1,0 ponto | **+0,6 a +1,3 ponto** |
-
-O sinal inverte em 2018 — antes ficávamos abaixo por defasagem de extração,
-depois acima por denominador faltando. Na série de cura isso vira um degrau
-artificial de cerca de 1,7 ponto entre 2017 e 2018, e faz a queda do período
-parecer **menor** do que é: 8,6 pontos no painel contra 9,5 na fonte.
-
-O empilhado de desfechos avisa disso na tela. Não dá para corrigir do nosso
-lado — o dado não chega. Ver `docs/perguntas-equipe-r.md`.
 
 ### 17. `sinan_landing` tem município de outra UF sob a UF errada
 
@@ -263,31 +163,6 @@ A coluna se chama `CO_MUNI_RESIDENCIA` — **residência**, não notificação. 
 melhor pista que temos sobre a armadilha 7. O código `0` marca município
 ignorado.
 
-### 9. A pirâmide de tuberculose só tem CASOS
-
-O dataset `piramides` particiona por `tipo` ∈ CASOS, CURA, OBITOS. Para
-tuberculose, **CURA e OBITOS somam zero** em todos os 16 anos e nos três
-níveis.
-
-E o padrão por doença diz de onde vem o defeito:
-
-| Doença | CASOS | CURA | OBITOS |
-|---|:--:|:--:|:--:|
-| Dengue | ✓ | ✓ | ✓ |
-| Zika | ✓ | ✓ | ✓ |
-| **Tuberculose** | ✓ | **zero** | **zero** |
-| **Hanseníase** | ✓ | **zero** | **zero** |
-
-A divisão é exatamente entre arboviroses e as duas doenças crônicas — que são
-justamente as que registram desfecho em `SITUA_ENCE`, e não em `EVOLUCAO`.
-A hipótese é que o pipeline da pirâmide leia um único campo de desfecho, que
-existe para dengue e zika e não para as outras duas.
-
-Consequência: a alternância CASOS/CURA/ÓBITOS da pirâmide etária não funciona
-na entrega de TB. A pirâmide de óbitos precisa sair de `obitos_sim_faixa`, que
-tem o dado (6.354 óbitos no Brasil em 2024). Esse dataset, por sua vez, só
-existe no nível MUN — a agregação para UF e BR é feita na query.
-
 ### 11. `sinan_landing` tem linha TOTAL além de M, F e I — somar tudo dobra
 
 A coluna `sexo` assume `M`, `F`, `I`, `NA`, `1` **e `TOTAL`**. A linha TOTAL
@@ -315,29 +190,6 @@ aparecia com 6 e escapava do corte em 5.
 
 Ver `excecoes.md` — virou divergência intencional, em que estamos certos e o
 original não.
-
-### 12. Os indicadores de TB vêm de outra extração, com outro ano
-
-`indicadores_tb_contatos` e `indicadores_tb_cultura_retratamento` não seguem a
-cobertura de ano do resto. Comparando o Brasil:
-
-| Ano | Contatos identificados | Casos novos (`incidence`) | Contatos por caso |
-|---|---:|---:|---:|
-| 2024 | 169.207 | 85.932 | 2,0 |
-| 2025 | 161.739 | 1.773 | **91,2** |
-
-Em 2024, com as duas fontes fechadas, a razão é plausível. Em 2025 o arquivo
-de indicadores está praticamente completo enquanto `incidence` mal começou —
-são extrações de datas diferentes.
-
-Consequência: **não dá para ler estes indicadores ao lado dos KPIs num ano que
-ainda não fechou.** A proporção em si continua válida, porque numerador e
-denominador saem do mesmo arquivo; o que não vale é a comparação com o resto
-da tela. O painel avisa quando o ano está incompleto.
-
-Estes dois arquivos também têm esquema próprio — `por_ano.parquet` nacional e
-`por_ano_geo.parquet` com município, e coluna geográfica
-`CO_MUNI_RESIDENCIA`. Ver armadilha 8.
 
 ## Conciliação entre fontes
 
