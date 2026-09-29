@@ -905,10 +905,6 @@ with resiliencia.painel("Indicadores de qualidade"), st.container(
 # Linha 3: tópicos de interesse
 # ---------------------------------------------------------------------------
 
-#: Um por linha desde 28/set/2026. Eram dois, e com a calha ao lado cada um
-#: ficaria com pouco mais de um terço da página — largura em que "1ª a 4ª
-#: série incompleta do EF" não cabe no eixo.
-TOPICOS_POR_LINHA = 1
 ALTURA_MINIMA_TOPICO = 175
 
 #: O tom claro que acompanha o roxo do boletim nas barras empilhadas. O

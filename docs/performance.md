@@ -1,5 +1,11 @@
 # Performance — linha de base
 
+> **Procedência:** este arquivo veio do painel nacional (`../sinan`) no port
+> de set/2026, e as medições são de lá — recortes de dengue e tuberculose, em
+> outra máquina. O método vale; os números não foram refeitos para a
+> hanseníase. Quem prende os limites **deste** painel é
+> `tests/test_performance.py`.
+
 Medido em 03/ago/2026, antes de qualquer otimização. Reproduzir com:
 
 ```bash
@@ -154,7 +160,6 @@ resposta sair. Medido com cache quente, média de três execuções:
 | `piramide_completa` | 6,3 ms | 6,9 ms |
 | `ranking` | 3,6 ms | 7,6 ms |
 | `serie_mensal` | 3,0 ms | 3,1 ms |
-| `indicadores_programa` | 2,3 ms | 3,7 ms |
 | `valores_por_geografia` | 1,7 ms | 2,3 ms |
 | **soma das leituras** | **~37 ms** | **~44 ms** |
 | **`mapa.deck()`** | **50,7 ms** | **112,5 ms** |

@@ -114,15 +114,6 @@ GRUPOS_DESFECHO: tuple[tuple[str, frozenset[str]], ...] = (
     ("outros", frozenset()),  # complemento; ver acima
 )
 
-#: Rótulo de cada grupo na legenda.
-ROTULO_DESFECHO = {
-    "cura": "Cura",
-    "interrupcao": "Interrupção",
-    "obito": "Óbito",
-    "outros": "Não avaliados e outros",
-}
-
-
 def grupo_do_desfecho(codigo: str) -> str:
     """Em que fatia do empilhado um código de `SITUA_ENCE` cai.
 

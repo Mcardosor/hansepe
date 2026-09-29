@@ -64,11 +64,14 @@ hansepe/
 ├── app.py                  # composição da tela
 ├── src/
 │   ├── estado.py           # navegação PE → macro → região → município
-│   ├── mapa.py, graficos.py, resiliencia.py
+│   ├── mapa.py, mapa_componente.py, componente_mapa/      # deck.gl
+│   ├── grafico_componente.py, componente_grafico/         # ECharts
+│   ├── resiliencia.py
 │   ├── data/               # escopo, leitura, kpis, canal, recortes, geo
 │   ├── doencas/hanseniase.py
 │   └── theme/
-├── tests/                  # ~380 testes; tests/paridade contra a tela de origem
+├── data/                   # extração só de hanseníase, 44 MB (não versionada)
+├── tests/                  # ~420 testes; tests/paridade contra a origem e o boletim
 ├── docs/                   # metodologia, paridade, inventário, plano, deploy
 └── assets/                 # bandeira de PE e marca
 ```

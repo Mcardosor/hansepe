@@ -24,16 +24,12 @@ from src.data import config as config_dados
 #: Os demais — tema, estado, resiliência — rodam em qualquer clone.
 PRECISAM_DE_DADOS = (
     "test_aplicacao.py",
-    "test_cache.py",
     "test_composicao.py",
-    "test_desfechos.py",
     "test_estados_vazios.py",
     "test_geo.py",
-    "test_indicadores_programa.py",
     "test_mapa.py",
     "test_navegacao_mapa.py",
     "test_performance.py",
-    "test_publicacao.py",
     "test_recortes.py",
 )
 

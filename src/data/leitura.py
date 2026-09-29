@@ -19,21 +19,6 @@ from .conexao import ParticaoAusente, caminho, conectar
 from .escopo import Escopo, mun6, particao_e_filtro_geo
 
 
-#: Piso para um ano entrar no empilhado de desfechos, como fração da mediana
-#: da própria série.
-#:
-#: **Relativo, e não um número de registros.** 2025 tem 1.074 encerramentos no
-#: Brasil contra 75.404 de 2024 — a extração que recebemos mal começou o ano —,
-#: e uma barra de 100% apoiada nisso não é dado ralo, é ruído com cara de
-#: achado, empilhado ao lado das outras com a mesma aparência de solidez. Mas
-#: um piso absoluto que pegue esse caso apagaria a série inteira de qualquer
-#: município: Recife encerra algumas centenas por ano, e são dados legítimos.
-#:
-#: Comparar com a mediana da série resolve os dois: 2025 é 1,4% dela e cai;
-#: um ano municipal normal fica perto de 100% e fica. A variação real entre
-#: anos não chega perto de cinco vezes, então 0,2 separa sem cortar dado bom.
-PISO_ANO_DESFECHO = 0.2
-
 
 def _uma_linha(sql: str, params: list) -> dict:
     df = conectar().execute(sql, params).fetchdf()
@@ -304,53 +289,6 @@ def dicionario(doenca: str, variavel: str | None = None) -> pd.DataFrame:
         sql += " WHERE variavel = ?"
         params.append(variavel)
     return conectar().execute(sql + " ORDER BY variavel, valor", params).fetchdf()
-
-
-def _indicador_tb(dataset: str, esc: Escopo, colunas: str) -> dict:
-    """Base dos indicadores de TB, que têm dois arquivos de esquemas diferentes.
-
-    ``por_ano.parquet`` é nacional; ``por_ano_geo.parquet`` tem o município.
-    A coluna geográfica é ``CO_MUNI_RESIDENCIA`` — **residência**, não
-    notificação. O código ``0`` marca município ignorado e é descartado nos
-    recortes de UF e município, mas continua no total nacional.
-    """
-    if esc.doenca != "TUBERCULOSE":
-        return {}
-
-    nacional = esc.nivel == "BR"
-    fonte = caminho(
-        dataset, arquivo="por_ano.parquet" if nacional else "por_ano_geo.parquet"
-    )
-    sql = f"SELECT {colunas} FROM read_parquet('{fonte}') WHERE NU_ANO = ?"
-    params: list = [str(esc.ano)]
-
-    if esc.nivel == "UF":
-        sql += " AND CO_MUNI_RESIDENCIA LIKE ?"
-        params.append(config.codigo_uf(esc.uf) + "%")
-    elif esc.nivel == "MUN":
-        sql += " AND CO_MUNI_RESIDENCIA = ?"
-        params.append(esc.mun)
-
-    return _uma_linha(sql, params)
-
-
-def indicador_tb_contatos(esc: Escopo) -> dict:
-    """Contatos identificados e examinados, com a proporção."""
-    return _indicador_tb(
-        "indicadores_tb_contatos",
-        esc,
-        "sum(identificados_total) AS identificados, sum(examinados_total) AS examinados",
-    )
-
-
-def indicador_tb_cultura(esc: Escopo) -> dict:
-    """Cultura realizada em casos de retratamento, com a proporção."""
-    return _indicador_tb(
-        "indicadores_tb_cultura_retratamento",
-        esc,
-        "sum(total_retratamento) AS retratamento, "
-        "sum(cultura_realizada_total) AS cultura",
-    )
 
 
 #: Colunas de `incidence` que servem uma métrica diretamente.
@@ -680,71 +618,6 @@ def serie_anual(esc: Escopo, metrica: str = "casos") -> pd.DataFrame:
     return conectar().execute(sql + " GROUP BY ano ORDER BY ano", list(params)).fetchdf()
 
 
-def serie_desfechos(esc: Escopo) -> pd.DataFrame:
-    """Composição anual dos desfechos de tratamento, em contagem e proporção.
-
-    Uma consulta só para a série inteira: a partição de `sinan_landing` é
-    doença/nível/ano, então omitir o ano varre todos eles sem custo de laço —
-    16 anos saem em uma ida ao disco.
-
-    Devolve `ano`, `desfecho`, `n` e `pct`, com as quatro fatias de
-    :data:`kpis.GRUPOS_DESFECHO` somando 100% em cada ano.
-
-    O agrupamento acontece em Python, e não no SQL, porque a normalização do
-    zero à esquerda mora em :func:`kpis.grupo_do_desfecho` — a regra é uma só,
-    e duplicá-la num `CASE WHEN` é como as duas versões se separam.
-
-    Anos rasos demais são descartados por :data:`PISO_ANO_DESFECHO`, que é
-    relativo à mediana da série — a extração que recebemos mal começou 2025.
-    """
-    from . import kpis
-
-    fonte = caminho(
-        "sinan_landing",
-        doenca=config.cod_landing(esc.doenca),
-        nivel=esc.nivel,
-    )
-    sql = f"""
-        SELECT ano, trim(valor) AS valor, sum(n) AS n
-        FROM read_parquet('{fonte}', hive_partitioning=true)
-        WHERE variavel = 'SITUA_ENCE' AND sexo = 'TOTAL'
-    """
-    params: list = []
-    if esc.nivel == "UF":
-        sql += " AND uf = ?"
-        params.append(esc.uf)
-    elif esc.nivel == "MUN":
-        sql += " AND geo_id = ?"
-        params.append(mun6(esc.mun))
-    sql += " GROUP BY 1, 2"
-
-    bruto = conectar().execute(sql, params).fetchdf()
-    if bruto.empty:
-        return pd.DataFrame(columns=["ano", "desfecho", "n", "pct"])
-
-    bruto["desfecho"] = bruto["valor"].map(kpis.grupo_do_desfecho)
-    bruto["ano"] = bruto["ano"].astype(int)
-
-    total = bruto.groupby("ano")["n"].sum()
-    completos = total[total >= PISO_ANO_DESFECHO * total.median()].index
-    bruto = bruto[bruto["ano"].isin(completos)]
-    if bruto.empty:
-        return pd.DataFrame(columns=["ano", "desfecho", "n", "pct"])
-
-    # `reindex` sobre o produto ano x desfecho: sem ele, um ano sem nenhum
-    # óbito registrado simplesmente não teria a fatia, e a legenda mudaria de
-    # tamanho de ano para ano.
-    nomes = [nome for nome, _ in kpis.GRUPOS_DESFECHO]
-    grade = pd.MultiIndex.from_product(
-        [sorted(bruto["ano"].unique()), nomes], names=["ano", "desfecho"]
-    )
-    serie = (
-        bruto.groupby(["ano", "desfecho"])["n"].sum().reindex(grade, fill_value=0.0)
-    ).reset_index()
-    serie["pct"] = 100 * serie["n"] / serie.groupby("ano")["n"].transform("sum")
-    return serie
-
-
 def ranking(
     esc: Escopo, metrica: str, top_n: int = 15, recorte: str = "MUN",
     macro: str | None = None,
@@ -1024,37 +897,6 @@ def meses_com_dado(doenca: str, ano: int) -> int:
     return int(linha[0]) if linha and linha[0] else 0
 
 
-def indicadores_programa(esc: Escopo, specs) -> list[dict]:
-    """Os indicadores de programa do recorte, prontos para exibição.
-
-    Cada item traz ``rotulo``, ``numerador``, ``denominador``, ``pct`` e
-    ``descricao``. Indicador sem dado no recorte sai com ``pct`` nulo, e não
-    some da lista — a ausência é informação.
-
-    **Atenção ao ano.** Estes arquivos vêm de uma extração diferente da de
-    `incidence`, com cobertura própria: em 2025 trazem 161.739 contatos
-    identificados enquanto `incidence` registra 1.773 casos, o que daria 91
-    contatos por caso. Em 2024, com os dois fechados, a razão é 2. Não dá para
-    ler os dois lado a lado num ano em que só um fechou; quem chama precisa
-    avisar. Ver docs/contrato-dados.md, armadilha 12.
-    """
-    saida: list[dict] = []
-    for spec in specs:
-        bruto = globals()[spec["leitor"]](esc) or {}
-        num = pd.to_numeric(bruto.get(spec["numerador"]), errors="coerce")
-        den = pd.to_numeric(bruto.get(spec["denominador"]), errors="coerce")
-        valido = pd.notna(num) and pd.notna(den) and den > 0
-        saida.append(
-            {
-                **{c: spec[c] for c in ("chave", "rotulo", "descricao", "cor")},
-                "numerador": float(num) if pd.notna(num) else None,
-                "denominador": float(den) if pd.notna(den) else None,
-                "pct": float(num) / float(den) * 100 if valido else None,
-            }
-        )
-    return saida
-
-
 def componentes_de_regiao(esc: Escopo, municipios: list[str]) -> dict:
     """Somas municipais de tudo que os KPIs precisam, para um conjunto de
     municípios da UF do escopo — uma macrorregião ou uma região de saúde.
@@ -1246,24 +1088,6 @@ def _serie_graus(esc: Escopo) -> pd.DataFrame:
                sum(casos_grau_II) AS grau_II
         FROM read_parquet('{fonte}', hive_partitioning=true)
     """
-    if onde:
-        sql += f" WHERE {onde}"
-    return conectar().execute(sql + " GROUP BY ano ORDER BY ano", list(params)).fetchdf()
-
-
-def serie_anual_casos_totais(esc: Escopo) -> pd.DataFrame:
-    """Casos por ano **contando todas as entradas** — o denominador de
-    cobertura da coorte, não um indicador de tela.
-
-    Existe separada de :func:`serie_anual` porque aquela, para a hanseníase,
-    já devolve casos novos pela definição do MS (§1 da paridade); aqui o que
-    se quer é o total de fichas do ano, que é com o que as saídas se comparam.
-    """
-    particao, onde, params = particao_e_filtro_geo(esc, col_mun="cod_mun6")
-    fonte = caminho(
-        "incidence", doenca=config.cod_agregado(esc.doenca), nivel=particao
-    )
-    sql = f"SELECT ano, sum(casos_total) AS casos FROM read_parquet('{fonte}', hive_partitioning=true)"
     if onde:
         sql += f" WHERE {onde}"
     return conectar().execute(sql + " GROUP BY ano ORDER BY ano", list(params)).fetchdf()

@@ -91,5 +91,3 @@ PAGINA_LADOS_ESTREITO = "16px"
 ALTURA_MIN_MAPA = "520px"
 ALTURA_MIN_PAINEL = "560px"
 
-# --- Gráficos --------------------------------------------------------------
-TOOLTIP_FUNDO = "rgba(17,24,39,.96)"

@@ -14,7 +14,8 @@ novos e taxa de detecção, que seguem a definição do Ministério
 Herda o core do painel nacional (`../sinan`: leitores, `Escopo`,
 navegação PE → macro → região de saúde → município, `recortes.py`) e a
 composição de tela do RecifeTB (`mapa.py` com três classificações,
-`graficos.py`, `canal.py`, `theme/`). Segue `../sinan/docs/como-fazer.md`.
+`canal.py`, `theme/`). O método está em `docs/como-fazer.md`, cópia da receita
+do painel nacional.
 
 Documentação, código, commits e comentários em português.
 
@@ -44,7 +45,8 @@ Config de dev do navegador: `../.claude/launch.json` tem `hansepe` na 8515.
 ## Arquitetura
 
 **Fluxo:** `app.py` (página única) → `src/estado.py` (`Navegacao`, topo em
-PE) → `src/data/*` → `src/mapa.py` e `src/graficos.py`.
+PE) → `src/data/*` → `src/mapa.py`/`mapa_componente.py` e
+`src/grafico_componente.py`.
 
 - **`src/data/escopo.py`** — `Escopo(doenca, ano, nivel, uf, mun,
   municipios)`. `municipios` é a lista de uma macrorregião ou região de
