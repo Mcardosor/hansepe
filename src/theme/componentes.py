@@ -11,9 +11,7 @@ import base64
 from html import escape
 from pathlib import Path
 
-from . import cores
-
-from . import tokens
+from . import cores, tokens
 
 
 def css_base() -> str:

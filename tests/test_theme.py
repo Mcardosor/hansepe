@@ -10,7 +10,6 @@ from src.doencas import hanseniase as tb
 from src.theme import componentes as c
 from src.theme import cores
 
-
 #: Campos do `Kpis` que existem só para alimentar outro número e nunca viram
 #: card: denominadores e numeradores de fração. Cobrar cor e rótulo do pack
 #: para eles seria cobrar por uma tela que não existe.
@@ -139,8 +138,8 @@ def test_card_nao_e_mais_escondido_do_leitor_de_tela() -> None:
 def test_seletor_do_mapa_so_oferece_metrica_que_o_mapa_pinta() -> None:
     """Oferecer opção que leva a painel vazio é pior que não oferecer.
 
-    `interrupcao_trat_pct` e `hiv_pos_pct` vêm do `sinan_landing`, que o
-    leitor consulta uma geografia por vez — não dá para pintar 27 UFs.
+    Cura e contatos vêm do `sinan_landing`, que o leitor consulta uma
+    geografia por vez — não dá para pintar o estado inteiro de uma vez.
     """
     from src.data import leitura
     from src.data.escopo import Escopo
@@ -151,7 +150,7 @@ def test_seletor_do_mapa_so_oferece_metrica_que_o_mapa_pinta() -> None:
         assert not valores.empty, f"{metrica} está no seletor mas não pinta"
 
 
-@pytest.mark.parametrize("chave", ["incid", "casos", "cura", "hiv_pos_pct"])
+@pytest.mark.parametrize("chave", ["incid", "casos", "cura", "cura_pct"])
 def test_todo_kpi_renderiza(chave: str) -> None:
     from src.doencas import hanseniase as pack
 

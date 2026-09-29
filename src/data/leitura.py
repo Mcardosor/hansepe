@@ -19,7 +19,6 @@ from .conexao import ParticaoAusente, caminho, conectar
 from .escopo import Escopo, mun6, particao_e_filtro_geo
 
 
-
 def _uma_linha(sql: str, params: list) -> dict:
     df = conectar().execute(sql, params).fetchdf()
     if df.empty:
@@ -329,66 +328,6 @@ _RAZAO_EM_INCIDENCE: dict[str, tuple[str, str]] = {}
 #: camada de dados consiga exibir o percentual por engano.
 MINIMO_PARA_PERCENTUAL = 5
 
-#: Razões que saem da distribuição de `SITUA_ENCE`, sobre todos os
-#: encerramentos.
-#:
-#: Mesmo denominador do card de interrupção e do empilhado da evolução. Sem
-#: isto o mapa pintaria uma definição de cura e o card mostraria outra, oito
-#: pontos acima, ambos rotulados "cura" na mesma tela.
-_RAZAO_EM_DESFECHO = {"cura_pct": "cura"}
-
-
-def desfechos_por_geografia(esc: Escopo) -> pd.DataFrame:
-    """Encerramentos por grupo de desfecho, para cada geografia do mapa.
-
-    Irmão de :func:`serie_desfechos`, no outro eixo: aquele varre anos numa
-    geografia, este varre geografias num ano. Devolve as colunas de
-    :data:`kpis.GRUPOS_DESFECHO` mais ``total``, indexadas pela chave da
-    camada — sigla no nível de UF, código de 6 dígitos no de município.
-
-    Existe porque `cura_pct` passou a sair de `SITUA_ENCE`, e o mapa precisa
-    dos 27 estados de uma vez. O agrupamento fica em Python, e não num
-    ``CASE WHEN``, pelo mesmo motivo de lá: a normalização do zero à esquerda
-    mora em :func:`kpis.grupo_do_desfecho`, e duplicá-la é como as duas
-    versões se separam.
-    """
-    from . import kpis
-
-    desce_para_municipio = esc.nivel in ("UF", "MUN")
-    fonte = caminho(
-        "sinan_landing",
-        doenca=config.cod_landing(esc.doenca),
-        nivel="MUN" if desce_para_municipio else "UF",
-        ano=esc.ano,
-    )
-    chave = "geo_id" if desce_para_municipio else "uf"
-    sql = f"""
-        SELECT {chave} AS chave, trim(valor) AS valor, sum(n) AS n
-        FROM read_parquet('{fonte}', hive_partitioning=true)
-        WHERE variavel = 'SITUA_ENCE' AND sexo = 'TOTAL'
-    """
-    params: list = []
-    if desce_para_municipio:
-        sql += " AND uf = ?"
-        params.append(esc.uf)
-    sql += " GROUP BY 1, 2"
-
-    bruto = conectar().execute(sql, params).fetchdf()
-    nomes = [nome for nome, _ in kpis.GRUPOS_DESFECHO]
-    if bruto.empty:
-        return pd.DataFrame(columns=[*nomes, "total"])
-
-    bruto["desfecho"] = bruto["valor"].map(kpis.grupo_do_desfecho)
-    tabela = (
-        bruto.pivot_table(
-            index="chave", columns="desfecho", values="n", aggfunc="sum", fill_value=0.0
-        )
-        .reindex(columns=nomes, fill_value=0.0)
-    )
-    tabela["total"] = tabela[nomes].sum(axis=1)
-    return tabela
-
-
 def valores_por_geografia(esc: Escopo, metrica: str) -> pd.Series:
     """Valor da métrica para cada geografia dentro do escopo, para o mapa.
 
@@ -448,18 +387,6 @@ def valores_por_geografia(esc: Escopo, metrica: str) -> pd.Series:
         sql = f"SELECT {chave}, {coluna} AS valor FROM read_parquet('{fonte14}', hive_partitioning=true){onde}"
         df = conectar().execute(sql, params).fetchdf()
         return df.set_index(chave)["valor"]
-
-    if metrica in _RAZAO_EM_DESFECHO:
-        grupo = _RAZAO_EM_DESFECHO[metrica]
-        tabela = desfechos_por_geografia(esc)
-        if tabela.empty:
-            return pd.Series(dtype=float)
-        # Base pequena vira "sem dado", a mesma regra do painel de composicao.
-        # Sem isto, 84 dos 178 municipios de PE com encerramento tinham menos
-        # de cinco, e 29 deles apareciam com 100% de cura -- o topo do mapa e
-        # do ranking era ocupado por municipio com tres casos.
-        base = tabela["total"].where(tabela["total"] >= MINIMO_PARA_PERCENTUAL)
-        return 100 * tabela[grupo] / base
 
     if metrica in _RAZAO_EM_INCIDENCE:
         num, den = _RAZAO_EM_INCIDENCE[metrica]

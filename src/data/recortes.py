@@ -25,6 +25,7 @@ import pandas as pd
 
 from . import config
 
+
 @dataclass(frozen=True, slots=True)
 class Configuracao:
     """Como ler os recortes de uma UF.

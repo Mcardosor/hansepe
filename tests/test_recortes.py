@@ -115,7 +115,7 @@ def test_taxa_e_recalculada_e_nao_promediada(nivel: str) -> None:
 
 def test_metrica_sem_componentes_devolve_vazio() -> None:
     componentes = leitura.componentes_municipais(ESCOPO)
-    assert recortes.agregar(componentes, "hiv_pos_pct", "macro").empty
+    assert recortes.agregar(componentes, "cura_pct", "macro").empty
 
 
 def test_agregacao_com_entrada_vazia_nao_quebra() -> None:

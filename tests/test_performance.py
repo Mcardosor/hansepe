@@ -53,7 +53,7 @@ def test_calcular_nao_le_a_mesma_variavel_duas_vezes(esc, contar_leituras) -> No
     repetidas = {v: n for v, n in contar_leituras.items() if n > 1}
     assert not repetidas, (
         f"variável lida mais de uma vez no mesmo calcular(): {repetidas}. "
-        f"Leia uma vez e empreste — ver `kpis.encerramentos`."
+        f"Leia uma vez e empreste ao segundo consumidor."
     )
 
 

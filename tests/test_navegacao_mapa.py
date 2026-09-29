@@ -10,13 +10,12 @@ responde por ele e a geometria tem de casar chave a chave.
 
 from __future__ import annotations
 
-
 import pytest
 
 from src import mapa
 from src.data import geo, leitura, recortes
-from src.doencas import hanseniase as tb
 from src.data.escopo import Escopo
+from src.doencas import hanseniase as tb
 from src.estado import RECORTES, Navegacao
 
 ANO = 2024
@@ -167,9 +166,13 @@ def test_detalhe_isola_um_municipio() -> None:
     )["zoom"]
 
 
-@pytest.mark.parametrize("metrica", ["hiv_pos_pct", "interrupcao_trat_pct"])
+@pytest.mark.parametrize("metrica", ["cura_pct", "contatos_pct"])
 def test_metrica_nao_pintavel_devolve_vazio_em_todo_recorte(metrica: str) -> None:
-    """Melhor mapa vazio e honesto que colorido com a métrica errada."""
+    """Melhor mapa vazio e honesto que colorido com a métrica errada.
+
+    Cura e contatos saem de `TPALTA_N` e `CONTEXAM`, que o leitor consulta uma
+    geografia por vez: não há como pintar 185 municípios de uma vez. Por isso
+    eles são card e gráfico, nunca opção do mapa."""
     for recorte in RECORTES:
         nav = Navegacao(ano=ANO)
         nav.entrar_uf("PE")

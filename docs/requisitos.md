@@ -1,139 +1,136 @@
-# Requisitos, dados e como os parquets chegam — Pernambuco
+# Requisitos e dados — Painel de Hanseníase de Pernambuco
 
-Três perguntas que sempre voltam: **o que é preciso para rodar**, **de onde
-saem os números** e **como os parquets chegam aqui**. O contrato completo dos
-datasets, com as armadilhas, está em `contrato-dados.md`; este arquivo é o
-recorte de Pernambuco.
+## Requisitos de máquina
 
----
+O painel é leve. Ele não usa banco de dados, não consulta nada pela internet
+enquanto roda e lê arquivos que ficam no próprio disco.
 
-## 1. Requisitos para rodar
+### Para quem só vai usar
 
-### Máquina
+Basta um navegador. O painel abre em <https://cenarios.unb.br/cenarios/hansepe/>
+e funciona em qualquer computador dos últimos dez anos.
 
 | | |
 |---|---|
-| Python | 3.13 (usamos o `.venv` do painel nacional: `../sinan/.venv`) |
-| Dependências | `requirements.txt` — Streamlit ≥ 1.40, DuckDB ≥ 1.1, PyArrow ≥ 16, pandas ≥ 2.2; GeoPandas, Shapely e TopoJSON só para o pré-processo da malha |
-| Dados | `data/`, 44 MB (§3) — **não versionado** |
-| Banco de dados | nenhum. O painel lê parquet do disco; não há servidor, não há VPN |
-| Rede | nenhuma em execução. Os componentes de mapa e gráfico trazem `deck.gl` e `ECharts` embutidos, sem CDN |
+| Navegador | Chrome, Edge, Firefox ou Safari, versão dos últimos dois anos |
+| Tela | a partir de 1366 × 768; abaixo disso os gráficos ficam apertados |
+| Internet | 5 Mbps são suficientes |
+| Placa de vídeo | qualquer uma. O mapa usa aceleração gráfica quando existe, e cai para desenho comum quando não existe |
+
+### Para rodar o painel no servidor
+
+Medido no container em produção, com o painel no ar.
+
+| | Mínimo | Confortável |
+|---|---|---|
+| Processador | 1 núcleo | 2 núcleos |
+| Memória | 512 MB | 1,5 GB |
+| Disco | 350 MB | 1 GB |
+| Sistema | Linux com Docker | Linux com Docker |
+
+Na prática o container ocupa **46 MB de memória** e fica em 0,4% de CPU
+atendendo. O limite de 1,5 GB existe como folga para picos, não porque ele
+precise. Do disco, 260 MB são a imagem Docker e 48 MB são os dados.
+
+O painel responde em milissegundos porque tudo está em disco local: não há
+espera de rede nem de banco.
+
+### Para desenvolver
+
+| | |
+|---|---|
+| Python | 3.13 |
+| Bibliotecas | Streamlit, DuckDB, PyArrow, pandas (lista em `requirements.txt`) |
+| Memória | 4 GB |
+| Disco | 500 MB, com os dados |
 
 ```bash
 pip install -r requirements.txt
-streamlit run app.py          # http://localhost:8501
-pytest                        # ~420 testes, ~25 s
+streamlit run app.py     # abre em http://localhost:8501
+pytest                   # 421 testes, cerca de 25 segundos
 ```
 
-### Variáveis de ambiente
-
-| Variável | Para que serve | Padrão |
-|---|---|---|
-| `SINAN_DATA_DIR` | raiz dos dados | `./data` |
-| `SINAN_DOENCA` | qual pacote de doença carregar | `hanseniase` |
-| `DADOS` | o que o Docker monta em `/app/data` | `./data` |
-
-### Container
-
-```bash
-docker compose up -d --build   # porta 8510, /cenarios/hansepe/
-```
-
-A imagem não carrega dados: eles entram como volume somente leitura. Ver
-`deploy.md`.
+GeoPandas, Shapely e TopoJSON aparecem na lista de bibliotecas, mas só são
+usados para preparar a malha dos municípios uma vez. O painel no ar não
+precisa deles.
 
 ---
 
-## 2. Quais bases e quais colunas
+## De onde vêm os números
 
-**Fonte:** SINAN/Ministério da Saúde, na extração agregada da equipe parceira.
-População do IBGE. Hierarquia geográfica (macrorregiões e regiões de saúde) da
-SES-PE. **Nenhum dado nominal entra no projeto** — tudo já vem agregado.
+**Fonte:** SINAN, do Ministério da Saúde, na extração agregada que a equipe
+parceira prepara. População do IBGE. A divisão do estado em macrorregiões e
+regiões de saúde vem da SES-PE.
 
-O painel abre seis datasets. Em cada um, só as partições `doenca=HANS` ou
-`doenca=HANSENIASE` (o código muda de dataset para dataset — armadilha 2 do
-`contrato-dados.md`).
+Não há dado de paciente no projeto. Tudo chega já somado por município, ano e
+categoria.
 
-| Dataset | Partições | Colunas que usamos | Alimenta |
-|---|---|---|---|
-| `incidence` | `doenca/nivel/ano` | `cod_mun6`, `nome_mun`, `uf`, `casos_total`, `casos_cura`, `pop_total`, `incid_100k_total`, `casos_grau_0`, `casos_grau_I`, `casos_grau_II`, `casos_nao_avaliado` | cards, mapa, ranking, grau II, GIF avaliado |
-| `incidence_0_14` | `doenca/nivel/ano` | `casos_0_14_total`, `pop_0_14_total`, `incid_0_14_100k_total` | cards e gráfico de menores de 15 |
-| `sinan_landing` | `doenca/nivel/ano` | `variavel`, `valor`, `valor_lbl`, `n`, `sexo`, `geo_id`, `uf` | casos novos (`MODOENTR`), tópicos, contatos, cura e abandono |
-| `_cache_ts` | `nivel/doenca/ano` | `mes`, `casos`, `casos_cura`, `pop_total`, `incid_100k`, `avalia_n` | canal endêmico e epicurva |
-| `piramides` | `nivel/tipo/doenca/ano` | `faixa_etaria`, `sexo`, `valor`, `pop` | pirâmide etária |
-| `sinan_dict` | `doenca` | código → rótulo | nomes das categorias nos tópicos |
+O painel abre seis conjuntos de arquivos:
 
-Mais `geo/` (malha dos 185 municípios) e `support/` (lookup de municípios e a
-hierarquia da SES-PE).
+| Arquivo | O que tem | O que alimenta na tela |
+|---|---|---|
+| `incidence` | casos, curas, população e graus de incapacidade por município e ano | os cards do topo, o mapa e o ranking |
+| `incidence_0_14` | o mesmo para menores de 15 anos | o card e o gráfico de 0 a 14 |
+| `sinan_landing` | as respostas da ficha de notificação, já contadas | casos novos, contatos, cura, abandono e os tópicos |
+| `_cache_ts` | casos mês a mês | o canal endêmico e a epicurva |
+| `piramides` | casos por sexo e faixa etária | a pirâmide |
+| `sinan_dict` | o nome de cada código | os rótulos das categorias |
 
-### As variáveis do SINAN que lemos
+Mais a malha dos 185 municípios e a tabela que liga município a região de
+saúde.
 
-Do `sinan_landing`, em formato longo (`variavel`, `valor`, `n`):
+### Os campos da ficha que usamos
 
-| Variável | Para quê |
+| Campo | Para quê |
 |---|---|
-| `MODOENTR` | **casos novos** pela definição do MS (`= 1`) — a base de tudo |
-| `CLASSOPERA` | multibacilar / paucibacilar |
+| `MODOENTR` | separar **caso novo** de recidiva e transferência — é a base de todos os coeficientes |
+| `TPALTA_N` | cura e abandono de tratamento |
+| `CONTREG` e `CONTEXAM` | contatos registrados e examinados |
+| `CLASSOPERA` | multibacilar ou paucibacilar |
 | `FORMACLINI` | forma clínica |
 | `AVALIA_N` | grau de incapacidade no diagnóstico |
-| `MODODETECT` | modo de detecção |
-| `TPALTA_N` | saída do tratamento → cura (`= 1`) e abandono (`= 7`) |
-| `CONTREG`, `CONTEXAM` | contatos registrados e examinados (o valor **é** a quantidade, não um código) |
-| `CS_RACA`, `CS_ESCOL_N`, `CS_GESTANT` | perfil |
-| `BACILOSCOP`, `NERVOSAFET`, `EPIS_RACIO`, `ESQ_INI_N`, `DOSE_RECEB` | no seletor de tópicos |
+| `MODODETECT` | como o caso foi encontrado |
+| `CS_RACA`, `CS_ESCOL_N`, `CS_GESTANT` | perfil dos casos |
+| `BACILOSCOP`, `NERVOSAFET`, `EPIS_RACIO`, `ESQ_INI_N`, `DOSE_RECEB` | disponíveis no seletor de tópicos |
 
-Os **filtros de sempre**: `sexo = 'TOTAL'` (a linha TOTAL já soma M, F e I —
-somar tudo dobra a contagem) e `trim(valor)`, porque o código vem com espaço à
-esquerda. As duas armadilhas estão no `contrato-dados.md`.
-
-### Como o número vira indicador
-
-As fórmulas, com numerador e denominador, estão em `metodologia.md`; onde
-divergimos do painel de origem ou do Ministério, em `paridade-hanseniase.md`.
+Como cada indicador é calculado está em `metodologia.md`. Onde o nosso número
+difere do painel da equipe parceira ou do boletim da SES-PE, e por quê, está
+em `paridade-hanseniase.md`.
 
 ---
 
-## 3. Como os parquets chegam
+## Como os dados chegam até aqui
 
-**Não há download em tempo de execução.** O painel lê arquivos locais, e é por
-isso que responde em milissegundos e funciona sem VPN.
+Nada é baixado enquanto o painel roda. Os arquivos são copiados uma vez e
+ficam no disco.
 
-O caminho é:
+O caminho é este:
 
-1. A **equipe parceira** publica a extração agregada do SINAN.
-2. Ela é carregada no lago do painel nacional (`../sinan/data`, ou
-   `~/dashboard-sinan-pe/data` na VM): todas as doenças, 200–240 MB.
-3. `scripts/extrair_dados_hanseniase.py` copia de lá **só o que este painel
-   abre** — as partições de hanseníase dos seis datasets acima, mais `geo/` e
-   `support/` — para o `data/` do projeto. São 44 MB.
+1. A equipe parceira publica a extração agregada do SINAN.
+2. Ela entra no acervo do painel nacional, que tem todas as doenças e pesa
+   cerca de 240 MB.
+3. Um script copia de lá só a parte de hanseníase — 48 MB — para a pasta
+   `data/` deste projeto.
 
 ```bash
-python -m scripts.extrair_dados_hanseniase                          # de ../sinan/data
-python -m scripts.extrair_dados_hanseniase --origem ~/dashboard-sinan-pe/data
+python -m scripts.extrair_dados_hanseniase
 ```
 
-Até 29/set/2026 o `data/` era um atalho para o lago inteiro. Passou a ser
-pasta própria para que o painel fosse **independente**: mexer nos dados daqui
-não afeta o sinan, o tbpe nem o RecifeTB, e a entrega não depende de o painel
-nacional estar na mesma máquina.
+Até setembro de 2026 o painel apontava direto para o acervo compartilhado.
+Passou a ter cópia própria para ficar **independente**: mexer nos dados daqui
+não afeta os outros painéis, e a entrega não depende de o painel nacional
+estar na mesma máquina.
 
-> **É cópia, e cópia envelhece.** Quando a extração do SINAN for atualizada, é
-> preciso rodar o script de novo — aqui e na VM. `data/PROCEDENCIA.json` grava
-> de onde veio, quando e o tamanho de cada dataset.
+**Atenção:** como é cópia, ela não se atualiza sozinha. Quando a equipe
+parceira publicar uma extração nova, é preciso rodar o script de novo — aqui e
+no servidor. O arquivo `data/PROCEDENCIA.json` registra de onde veio e quando.
 
-### Como a consulta lê
+### Como o painel lê
 
-DuckDB em memória, lendo o parquet direto, sem carregar nada para um banco:
+Os arquivos são lidos direto do disco pelo DuckDB, sem carregar nada para um
+banco. Cada pasta guarda um recorte — doença, nível geográfico, ano — e a
+consulta abre só as pastas de que precisa. É isso que faz o painel responder
+instantaneamente mesmo com milhões de linhas disponíveis.
 
-```sql
-SELECT cod_mun6, casos_total
-FROM read_parquet('…/incidence/doenca=HANSENIASE/nivel=MUN/ano=2025/*.parquet',
-                  hive_partitioning=true)
-WHERE uf = 'PE'
-```
-
-A partição entra **no caminho**, não no `WHERE`. Não é só performance: um glob
-da raiz une arquivos de esquemas diferentes — os de `nivel=BR` não têm a
-coluna `uf` —, e o DuckDB resolve a união pelo esquema do primeiro arquivo,
-fazendo sumir colunas que existem nos demais. A ordem das partições muda de
-dataset para dataset e está declarada em `src/data/conexao.py`.
+O detalhe técnico de como as pastas são organizadas, e os cuidados na leitura,
+estão em `contrato-dados.md`.
