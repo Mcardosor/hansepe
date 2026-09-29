@@ -1,8 +1,11 @@
 # Painel de hanseníase de Pernambuco — `hansepe`.
 #
-# Hospedagem nossa, na VM (`/cenarios/hansepe/`), como o sinan e o tbpe: os
-# dados são montados como volume de `../sinan/data` (a mesma extração que
-# serve o painel nacional), não copiados para a imagem.
+# Hospedagem nossa, na VM (`/cenarios/hansepe/`), como o sinan e o tbpe. Os
+# dados são **do painel**: `./data`, com as partições de hanseníase e mais
+# nada, montado somente leitura. Até 29/set/2026 era o lago inteiro do painel
+# nacional (241 MB, cinco doenças), e o painel dependia de o sinan estar na
+# mesma máquina. Montar a pasta própria é o que torna a entrega independente.
+# Gerar com `python -m scripts.extrair_dados_hanseniase`.
 services:
   dashboard:
     build: .
@@ -24,9 +27,10 @@ services:
       - ./app.py:/app/app.py:ro
       - ./src:/app/src:ro
       - ./.streamlit:/app/.streamlit:ro
-      # A extração do sinan, somente leitura. Em dev é a junção `data ->
-      # ../sinan/data`; na VM, o mesmo diretório do painel nacional.
-      - ${SINAN_DATA_DIR:-../dashboard-sinan-pe/data}:/app/data:ro
+      # A extração de hanseníase deste painel, somente leitura. `DADOS`
+      # existe para quem quiser apontar para outro lugar; o padrão é a pasta
+      # do próprio repositório.
+      - ${DADOS:-./data}:/app/data:ro
     deploy:
       resources:
         limits:

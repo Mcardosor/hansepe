@@ -18,11 +18,11 @@ import pytest
 from src import doencas
 
 
-def test_padrao_e_tuberculose() -> None:
+def test_o_pack_padrao_e_hanseniase() -> None:
     assert doencas.carregar().DOENCA == "HANSENIASE"
 
 
-def test_tuberculose_esta_disponivel() -> None:
+def test_hanseniase_esta_no_registro() -> None:
     assert "hanseniase" in doencas.disponiveis()
 
 

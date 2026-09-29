@@ -29,12 +29,23 @@ Onde difere do painel de origem e do MS:
 
 ## Dados
 
-A extração agregada do SINAN da equipe parceira — a mesma que serve o
-painel nacional (`../sinan/data/parquet/dashboard`): `incidence`,
-`incidence_0_14`, `sinan_landing`, `_cache_ts`, `piramides`, mais as malhas
-da SES-PE em `data/support/`. Nenhum dado nominal entra no projeto. Os
-parquets não são versionados; aponte `SINAN_DATA_DIR` ou crie a junção
-`data -> ../sinan/data`.
+A extração agregada do SINAN da equipe parceira, **só a parte de
+hanseníase**: `incidence`, `incidence_0_14`, `sinan_landing`, `_cache_ts`,
+`piramides` e os do SIM, com as partições `doenca=HANS` e
+`doenca=HANSENIASE`, mais as malhas da SES-PE em `data/support/`. São 44 MB,
+e o painel não lê nada fora de `data/` — apagar aqui não afeta outro projeto.
+Nenhum dado nominal entra.
+
+Os parquets não são versionados. Para montar a pasta a partir do lago do
+painel nacional:
+
+```bash
+python -m scripts.extrair_dados_hanseniase          # de ../sinan/data
+python -m scripts.extrair_dados_hanseniase --origem ~/dashboard-sinan-pe/data
+```
+
+É uma cópia: quando a extração do sinan for atualizada, rode de novo.
+`data/PROCEDENCIA.json` diz de onde veio e quando.
 
 ## Como rodar
 

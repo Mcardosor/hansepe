@@ -313,7 +313,7 @@ def test_deck_pinta_cada_feicao() -> None:
     from src.data.escopo import Escopo
 
     camada = geo.municipios("PE")
-    valores = leitura.valores_por_geografia(Escopo("TB", 2024, "UF", uf="PE"), "incid")
+    valores = leitura.valores_por_geografia(Escopo("HANSENIASE", 2024, "UF", uf="PE"), "incid")
     desenho, escala = mapa.deck(
         camada, valores, chave="cod_mun6", rampa=RAMPA, rotulo_metrica="Incidência"
     )
@@ -342,7 +342,7 @@ def _payload(uf: str) -> str:
     from src.doencas import hanseniase as pack
 
     camada = geo.municipios(uf)
-    valores = leitura.valores_por_geografia(Escopo("TB", 2024, "UF", uf=uf), "incid")
+    valores = leitura.valores_por_geografia(Escopo("HANSENIASE", 2024, "UF", uf=uf), "incid")
     figura, _ = mapa.deck(
         camada,
         valores,
@@ -387,7 +387,7 @@ def _montar_features(uf: str, geometrias=None):
     from src.doencas import hanseniase as pack
 
     camada = geo.municipios(uf)
-    valores = leitura.valores_por_geografia(Escopo("TB", 2024, "UF", uf=uf), "incid")
+    valores = leitura.valores_por_geografia(Escopo("HANSENIASE", 2024, "UF", uf=uf), "incid")
     figura, _ = mapa.deck(
         camada, valores, chave="cod_mun6", rampa=pack.rampa_mapa("incid"),
         rotulo_metrica="Incidência", coluna_nome="nome_mun", geometrias=geometrias,

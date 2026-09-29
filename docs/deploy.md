@@ -5,16 +5,24 @@
 | Público | `https://painel.cenarios.unb.br/cenarios/hansepe/` |
 | Direto, por VPN | porta 8510 na VM dos painéis (`ssh cenarios-vm`) |
 | Pasta na VM | `~/hansepe` |
-| Dados | volume de `~/dashboard-sinan-pe/data` — a mesma extração do painel nacional; nada é copiado |
+| Dados | volume de `~/hansepe/data` — só hanseníase, 44 MB, gerado na VM por `python3 -m scripts.extrair_dados_hanseniase --origem ~/dashboard-sinan-pe/data` |
 
 ```bash
 ssh cenarios-vm 'cd ~/hansepe && git pull && docker compose up -d --build'
 ```
 
-Localmente, com a junção `data -> ../sinan/data`:
+Quando o lago do painel nacional for atualizado, os dados daqui **não**
+acompanham sozinhos — é preciso regerar antes de subir:
 
 ```bash
-SINAN_DATA_DIR=./data docker compose up -d --build
+ssh cenarios-vm 'cd ~/hansepe && python3 -m scripts.extrair_dados_hanseniase --origem ~/dashboard-sinan-pe/data && docker compose up -d'
+```
+
+Localmente vale o mesmo, com o padrão `../sinan/data`:
+
+```bash
+python -m scripts.extrair_dados_hanseniase
+docker compose up -d --build
 ```
 
 No Git Bash, `-v /app/data` vira `C:/Program Files/Git/app/data` e o volume
