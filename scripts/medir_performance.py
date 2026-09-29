@@ -1,11 +1,16 @@
-"""Linha de base de performance da camada de dados.
+"""Quanto custa cada leitura do painel, sem o cache do Streamlit.
 
-Mede o tempo de cada leitor sem o cache do Streamlit, para saber o custo real
-por consulta. Serve de referência para a semana 6.
+Mede o tempo real por consulta nos três recortes que a navegação oferece —
+estado, região de saúde e município —, que é o que o usuário percorre ao
+clicar no mapa. O cache do Streamlit fica de fora de propósito: o que interessa
+aqui é o custo da primeira vez, que é o que ele sente.
 
 Uso::
 
     python -m scripts.medir_performance
+
+Os números entram em `docs/performance.md`; quando mudarem de forma relevante,
+é ali que se atualiza.
 """
 
 from __future__ import annotations
@@ -13,35 +18,52 @@ from __future__ import annotations
 import statistics
 import time
 from collections.abc import Callable
+from dataclasses import replace
 
-from src.data import kpis, leitura
+from src.data import canal, kpis, leitura, recortes
 from src.data.escopo import Escopo
 
 REPETICOES = 5
 
+#: 2025 é o ano que o painel abre. Município: Recife, o maior do estado.
+ANO = 2025
+
+_ESTADO = Escopo("HANSENIASE", ANO, "UF", uf="PE")
+_REGIAO = replace(
+    _ESTADO,
+    municipios=tuple(recortes.municipios_de(macro=recortes.macros("PE")[0], uf="PE")),
+)
+_MUNICIPIO = Escopo("HANSENIASE", ANO, "MUN", uf="PE", mun="261160")
+
 ESCOPOS = {
-    "BR": Escopo("TUBERCULOSE", 2024, "BR"),
-    "UF (PE)": Escopo("TUBERCULOSE", 2024, "UF", uf="PE"),
-    "MUN (Recife)": Escopo("TUBERCULOSE", 2024, "MUN", mun="261160"),
+    "PE": _ESTADO,
+    "macrorregião": _REGIAO,
+    "Recife": _MUNICIPIO,
 }
 
+#: Só o que o painel realmente chama. A ordem é a da tela, de cima para baixo.
 OPERACOES: dict[str, Callable[[Escopo], object]] = {
-    "incidencia": leitura.incidencia,
-    "incidencia_0_14": leitura.incidencia_0_14,
-    "obitos_sim": leitura.obitos_sim,
-    "serie_mensal": leitura.serie_mensal,
-    "casos_novos": leitura.casos_novos,
-    "piramide": leitura.piramide,
-    "obitos_por_faixa": leitura.obitos_por_faixa,
-    "variavel_sinan(HIV)": lambda e: leitura.variavel_sinan(e, "HIV"),
-    "indicador_contatos": leitura.indicador_tb_contatos,
-    "kpis.calcular (tudo)": kpis.calcular,
+    "kpis.calcular (os 7 cards)": kpis.calcular,
+    "casos_novos_ms": leitura.casos_novos_ms,
+    "valores_por_geografia (mapa)": lambda e: leitura.valores_por_geografia(e, "incid"),
+    "ranking": lambda e: leitura.ranking(e, "incid"),
+    "canal.montar": canal.montar,
+    "canal.epicurva (10 anos)": lambda e: canal.epicurva(e, ano_min=ANO - 9),
+    "piramide_completa": leitura.piramide_completa,
+    "serie_qualidade (gráficos 10–13)": leitura.serie_qualidade,
+    "serie_0_14": leitura.serie_0_14,
+    "serie_classificacao_operacional": leitura.serie_classificacao_operacional,
+    "composicao (um tópico)": lambda e: leitura.composicao(e, "CLASSOPERA"),
 }
 
 
 def cronometrar(fn: Callable[[Escopo], object], esc: Escopo) -> tuple[float, float]:
-    """Devolve (mediana, pior) em milissegundos, descartando a primeira chamada."""
-    fn(esc)  # aquece o cache de metadados do parquet
+    """(mediana, pior) em milissegundos, descartando a primeira chamada.
+
+    A primeira paga a leitura dos metadados do parquet, que o sistema de
+    arquivos passa a guardar — contá-la mediria o disco frio, não a consulta.
+    """
+    fn(esc)
     tempos = []
     for _ in range(REPETICOES):
         inicio = time.perf_counter()
@@ -51,7 +73,7 @@ def cronometrar(fn: Callable[[Escopo], object], esc: Escopo) -> tuple[float, flo
 
 
 def main() -> None:
-    print(f"Mediana de {REPETICOES} execuções, em ms (primeira descartada)\n")
+    print(f"Hanseníase, {ANO}. Mediana de {REPETICOES} execuções, em ms.\n")
     largura = max(len(n) for n in OPERACOES)
     print(f"{'operação':<{largura}}" + "".join(f"{r:>22}" for r in ESCOPOS))
 
@@ -59,8 +81,13 @@ def main() -> None:
     for nome, fn in OPERACOES.items():
         linha = f"{nome:<{largura}}"
         for rotulo, esc in ESCOPOS.items():
-            mediana, pior = cronometrar(fn, esc)
-            if nome != "kpis.calcular (tudo)":
+            try:
+                mediana, pior = cronometrar(fn, esc)
+            except Exception as erro:  # noqa: BLE001 — medição não pode derrubar
+                linha += f"{'—':>14}{'':>8}"
+                print(f"  ! {nome} em {rotulo}: {type(erro).__name__}")
+                continue
+            if not nome.startswith("kpis.calcular"):
                 totais[rotulo] += mediana
             linha += f"{mediana:>14.1f}{pior:>8.1f}"
         print(linha)
