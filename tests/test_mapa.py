@@ -289,6 +289,48 @@ def test_a_legenda_apagada_nao_muda_a_cor_de_quem_esta_na_faixa() -> None:
     assert len(mapa._rgb(escala.cores[escala.rotulos[0]])) == 3
 
 
+def test_a_faixa_mais_clara_se_distingue_do_resto() -> None:
+    """O realce tem de funcionar para **qualquer** faixa, não só as escuras.
+
+    A primeira versão baixava a opacidade dos outros mantendo a cor de cada
+    um. Com "Hiperendêmico" escolhido ficava ótimo; com "Baixo" — o lilás mais
+    claro da rampa — o mapa inteiro virava claro e não se distinguia nada
+    (relatado em 30/set/2026). Quem está fora agora recebe cinza chapado, sem
+    hue, então sobra uma cor só na tela: a da faixa escolhida.
+    """
+    import json
+
+    from src.data import geo, leitura
+    from src.data.escopo import Escopo
+    from src.doencas import hanseniase as pack
+
+    camada = geo.municipios("PE")
+    esc = Escopo(doenca="HANSENIASE", ano=2024, nivel="UF", uf="PE", mun=None,
+                 municipios=())
+    valores = leitura.valores_por_geografia(esc, "incid")
+    rampa = pack.rampa_mapa("incid")
+    escala_baixa = "< 2"
+    desenho, escala = mapa.deck(
+        camada, valores, chave="cod_mun6", rampa=rampa,
+        rotulo_metrica="Detecção", coluna_nome="nome_mun", metodo="FIXA",
+        cortes_fixos=list(pack.cortes_fixos("incid")),
+        faixa_realcada=escala_baixa,
+    )
+    spec = json.loads(desenho.to_json())
+    camada_geo = next(c for c in spec["layers"] if c.get("id") == "geografia")
+    bruto = camada_geo["data"]
+    feicoes = bruto["features"] if isinstance(bruto, dict) else bruto
+    cores = {tuple(f["properties"]["cor"]) for f in feicoes}
+
+    da_faixa = tuple(mapa._rgb(escala.cores[escala_baixa]))
+    assert da_faixa in cores, "quem está na faixa perdeu a cor dela"
+    assert tuple(mapa.CINZA_APAGADO) in cores, "quem está fora não virou cinza"
+    # E o cinza não pode ser confundido com nenhum tom da rampa.
+    assert tuple(mapa.CINZA_APAGADO) not in {tuple(mapa._rgb(c)) for c in rampa}
+    # O contorno passa a vir por feição, para marcar o município claro.
+    assert camada_geo["getLineColor"] == "@@=properties.contorno"
+
+
 def test_faixa_inexistente_nao_apaga_o_mapa_inteiro() -> None:
     """O rótulo da última interação sobrevive no `session_state` quando a
     métrica muda, e as faixas da escala nova são outras. Sem a guarda, todo

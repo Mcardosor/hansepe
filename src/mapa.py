@@ -695,14 +695,26 @@ def enquadrar(
     return {"center": centro, "zoom": max(2.0, min(zoom, 11.0))}
 
 
-#: Opacidade de quem **não** está na faixa clicada na legenda, de 0 a 255.
+#: Cinza de quem **não** está na faixa clicada na legenda.
 #:
-#: Apagar os outros, e não contornar os escolhidos: o contorno some no meio de
-#: 185 municípios pequenos, e num mapa de endemicidade a pergunta é "onde
-#: estão os hiperendêmicos", que se responde melhor com o resto saindo de
-#: cena. 34 deixa a malha visível — sumir de vez tiraria a referência do
-#: desenho do estado —, mas sem competir com a faixa em foco.
-OPACIDADE_APAGADA = 34
+#: A primeira versão, de 28/set/2026, baixava a opacidade dos outros para 34 e
+#: mantinha a cor de cada um. Funcionava para "Hiperendêmico" e falhava
+#: justamente para "Baixo": a faixa mais baixa é o lilás mais claro da rampa,
+#: e contra 145 municípios em lilás desbotado ela não se distinguia de nada —
+#: o mapa inteiro ficava claro. Corrigido em 30/set.
+#:
+#: Cinza **chapado** tira a cor dos outros em vez de enfraquecê-la, então
+#: sobra uma hue só na tela: a da faixa escolhida, seja ela qual for. A malha
+#: continua desenhada, que é o que mantém a referência do estado.
+CINZA_APAGADO = [226, 228, 233]
+
+#: Contorno de quem está na faixa escolhida. Escuro o bastante para marcar um
+#: município pequeno de cor clara — com o preenchimento sozinho, "Baixo" some.
+CONTORNO_REALCADO = [63, 51, 104, 235]
+
+#: Contorno de quem ficou de fora: some no cinza, para não desenhar 145
+#: molduras competindo com as 40 que interessam.
+CONTORNO_APAGADO = [205, 208, 214, 180]
 
 
 def _rgb(cor: str) -> list[int]:
@@ -962,7 +974,17 @@ def deck(
     dados["classe"] = classificar(dados["valor"], escala_)
     dados["cor"] = dados["classe"].map(
         lambda c: _rgb(escala_.cores.get(c, SEM_DADO))
-        + ([] if faixa_realcada in (None, c) else [OPACIDADE_APAGADA])
+        if faixa_realcada in (None, c)
+        else CINZA_APAGADO
+    )
+    # Contorno por feição só quando há faixa escolhida: fora disso a camada
+    # usa uma cor de linha só, e mandar uma por município seria payload à toa.
+    dados["contorno"] = (
+        dados["classe"].map(
+            lambda c: CONTORNO_REALCADO if c == faixa_realcada else CONTORNO_APAGADO
+        )
+        if faixa_realcada is not None
+        else None
     )
     dados["exibicao"] = dados["valor"].map(
         lambda v: "—" if pd.isna(v) else _formatar(float(v), decimais)
@@ -1053,8 +1075,11 @@ def deck(
         # o município sobre os tons escuros, e nas classes claras a malha
         # virava uma mancha só. Este tom fica no meio da rampa, então
         # contrasta com os dois extremos dela.
-        get_line_color=[124, 109, 168, 205],
-        line_width_min_pixels=0.8,
+        get_line_color=(
+            "properties.contorno" if faixa_realcada is not None
+            else [124, 109, 168, 205]
+        ),
+        line_width_min_pixels=1.1 if faixa_realcada is not None else 0.8,
         stroked=True,
         filled=True,
         # `pickable` é o que faz o clique existir; `auto_highlight` dá o
