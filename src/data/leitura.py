@@ -139,6 +139,43 @@ def serie_mensal(esc: Escopo, grau: str | None = None) -> pd.DataFrame:
     return conectar().execute(sql, params).fetchdf()
 
 
+def serie_mensal_casos(esc: Escopo, ano_min: int, ano_max: int) -> pd.DataFrame:
+    """Casos por ano e mês num intervalo de anos, numa consulta só.
+
+    Existe para a epicurva, que atravessa dez anos. Ela montava a série ano a
+    ano chamando `serie_dupla`, e cada ano custava **duas** leituras do
+    `_cache_ts` — uma para casos, outra para incidência — mais duas do
+    `incidence` quando o recorte é uma região. Dez anos numa macrorregião eram
+    quarenta consultas para desenhar uma linha de contagem.
+
+    Aqui a partição `ano` fica **fora** do caminho, então o glob pega todos os
+    anos de uma vez e o `WHERE` recorta o intervalo. É a exceção à regra de
+    podar pela partição (docs/contrato-dados.md): vale porque o que se lê é
+    justamente a série inteira, e os arquivos de um mesmo nível têm o mesmo
+    esquema.
+
+    Só `casos`: a epicurva desenha contagem, e trazer população para calcular
+    uma incidência que ninguém usa era metade do custo.
+
+    Colunas ``ano``, ``mes``, ``mes_nome``, ``casos``.
+    """
+    particao, onde_geo, params_geo = particao_e_filtro_geo(esc)
+    fonte = caminho("_cache_ts", nivel=particao, doenca=config.cod_agregado(esc.doenca))
+    sql = f"""
+        SELECT ano, mes, any_value(mes_nome) AS mes_nome, sum(casos) AS casos
+        FROM read_parquet('{fonte}', hive_partitioning=true)
+        WHERE ano BETWEEN ? AND ?
+    """
+    params = [ano_min, ano_max, *params_geo]
+    if onde_geo:
+        sql += f" AND {onde_geo}"
+    df = conectar().execute(sql + " GROUP BY ano, mes ORDER BY ano, mes", params).fetchdf()
+    if df.empty:
+        return pd.DataFrame(columns=["ano", "mes", "mes_nome", "casos"])
+    df["ano"] = df["ano"].astype(int)
+    return df
+
+
 def variavel_sinan(esc: Escopo, variavel: str) -> pd.DataFrame:
     """Distribuição de uma variável do SINAN no recorte.
 

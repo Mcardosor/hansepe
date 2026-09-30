@@ -70,3 +70,42 @@ def test_o_teto_de_payload_do_mapa_continua_existindo() -> None:
     assert TETO_PAYLOAD_MB <= 1.0, (
         "o teto de payload do mapa afrouxou; ver docs/performance.md"
     )
+
+
+def test_a_epicurva_numa_consulta_da_o_mesmo_que_ano_a_ano() -> None:
+    """A epicurva lê os dez anos de uma vez desde 30/set/2026.
+
+    Antes montava ano a ano, e cada ano custava duas leituras do `_cache_ts`
+    mais duas do `incidence` quando o recorte era uma região — quarenta
+    consultas para desenhar uma linha de contagem. Medido alternando as duas
+    implementações no mesmo processo, caiu de 201 para 29 ms em PE.
+
+    Trocar um laço por uma consulta agregada é o tipo de mudança que acerta o
+    total e erra a distribuição sem ninguém ver. Por isso o teste compara mês
+    a mês, e a conta antiga continua escrita aqui.
+    """
+    from dataclasses import replace
+
+    import pandas as pd
+
+    from src.data import canal, leitura
+    from src.data.escopo import Escopo
+
+    esc = Escopo("HANSENIASE", 2025, "UF", uf="PE")
+    primeiro = 2025 - 4
+
+    partes = []
+    for ano in range(primeiro, esc.ano + 1):
+        serie = leitura.serie_dupla(replace(esc, ano=ano), "meses")
+        if not serie.empty:
+            partes.append(serie.assign(ano=ano))
+    ano_a_ano = pd.concat(partes, ignore_index=True)[["ano", "mes", "casos"]]
+
+    de_uma_vez = canal.epicurva(esc, ano_min=primeiro)[["ano", "mes", "casos"]]
+
+    juntos = ano_a_ano.merge(
+        de_uma_vez, on=["ano", "mes"], how="outer", suffixes=("_laco", "_agregada")
+    )
+    assert len(juntos) == len(ano_a_ano), "a consulta agregada perdeu ou criou meses"
+    divergem = juntos[juntos["casos_laco"] != juntos["casos_agregada"]]
+    assert divergem.empty, f"meses com contagem diferente:\n{divergem}"

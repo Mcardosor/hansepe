@@ -25,8 +25,8 @@ recortes: o estado, uma macrorregião e um município.
 
 | Operação | PE | macrorregião | Recife |
 |---|---:|---:|---:|
-| `canal.epicurva` (10 anos) | 93 | 125 | 101 |
 | `canal.montar` | 61 | 86 | 67 |
+| `canal.epicurva` (10 anos) | **29** | **38** | **30** |
 | `serie_qualidade` (Gráficos 10–13) | 37 | 74 | 50 |
 | `ranking` | 16 | 16 | 15 |
 | `serie_classificacao_operacional` | 15 | 30 | 22 |
@@ -35,23 +35,55 @@ recortes: o estado, uma macrorregião e um município.
 | `composicao` (um tópico) | 9 | 14 | 10 |
 | `serie_0_14` | 8 | 17 | 9 |
 | `casos_novos_ms` | 5 | 10 | 7 |
-| **soma dos leitores** | **267** | **398** | **306** |
+| **soma dos leitores** | **203** | **311** | **235** |
 | `kpis.calcular` (os 7 cards) | 39 | 60 | 46 |
 
-Somar a coluna superestima o que o usuário espera: os leitores são cacheados
-separadamente, e um clique no mapa não invalida todos. Mas serve de teto — e
-no recorte por macrorregião ele **passa dos 300 ms**.
+A linha da epicurva já é a de depois da otimização de 30/set (abaixo); as
+demais são de 29/set. Somar a coluna superestima o que o usuário espera — os
+leitores são cacheados separadamente, e um clique no mapa não invalida todos —,
+mas serve de teto, e agora ele cabe nos 300 ms em PE e no município.
+
+## A epicurva numa consulta só — 30/set/2026
+
+Ela montava a série **ano a ano**, e cada ano custava duas leituras do
+`_cache_ts` (uma para casos, outra para incidência) mais duas do `incidence`
+quando o recorte é uma região. Dez anos numa macrorregião eram quarenta
+consultas para desenhar uma linha de contagem.
+
+Agora é uma consulta: a partição `ano` fica fora do caminho, o glob pega todos
+os anos e o `WHERE` recorta o intervalo. E só `casos` — a epicurva desenha
+contagem, e trazer população para calcular uma incidência que ninguém usa era
+metade do custo.
+
+Medido alternando as duas implementações **no mesmo processo**, que é o que
+torna a comparação honesta: a máquina varia de carga ao longo do dia, e medir
+uma de manhã e a outra à tarde compara o computador, não o código.
+
+| recorte | antes | depois | ganho |
+|---|---:|---:|---:|
+| PE | 201 ms | **29 ms** | 85% |
+| macrorregião | 275 ms | **38 ms** | 86% |
+| município | 217 ms | **30 ms** | 86% |
+
+`tests/test_performance.py` compara mês a mês as duas contas: trocar um laço
+por consulta agregada é o tipo de mudança que acerta o total e erra a
+distribuição sem ninguém ver.
+
+É a exceção à regra de podar pela partição (`contrato-dados.md`): vale porque
+o que se lê é justamente a série inteira, e os arquivos de um mesmo nível têm
+o mesmo esquema.
 
 ## O que pesa, e por quê
 
-**As duas vistas mensais custam metade do orçamento.** `canal.montar` e
-`canal.epicurva` somam 154 ms em PE e 211 ms numa macrorregião — mais que
-todos os outros leitores juntos. A razão é estrutural: as duas montam a série
-ano a ano, uma consulta por ano, sobre o `_cache_ts`, que é o dataset mais
-granular que temos.
+**O canal endêmico é agora o item mais caro**, com 61 ms em PE e 86 numa
+macrorregião. Ele monta a série dos cinco anos de referência mais o corrente,
+um ano por consulta, e precisa da **incidência** — não só da contagem —, então
+a mesma otimização da epicurva não se aplica de graça: exigiria trazer a
+população de todos os anos junto e recalcular a taxa, o que mexe em número na
+tela e pede conferência.
 
-A janela de 5, 10 ou 15 anos, que entrou em 28/set, é o que segura esse custo:
-em 15 anos a epicurva custaria metade a mais que em 10.
+A janela de 5, 10 ou 15 anos, que entrou em 28/set, continua segurando o custo
+da epicurva: ela é linear no número de anos mesmo depois da otimização.
 
 Vale registrar a ironia: esses dois gráficos são os que menos dizem sobre
 hanseníase — o mês de notificação é a agenda do serviço, não a doença, porque

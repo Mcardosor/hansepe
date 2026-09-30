@@ -220,21 +220,15 @@ def epicurva(esc: Escopo, ano_min: int | None = None) -> pd.DataFrame:
     Só Recife inteiro, pelo mesmo motivo do canal: o ``_cache_ts`` não desce a
     bairro.
     """
-    cidade = esc
     primeiro = ano_min if ano_min is not None else _ANO_MIN
-    partes: list[pd.DataFrame] = []
-    for ano in range(primeiro, cidade.ano + 1):
-        try:
-            serie = _incidencia_mensal(cidade, ano)
-        except FileNotFoundError:
-            continue
-        if not serie.empty:
-            partes.append(serie.assign(ano=ano))
-
-    if not partes:
+    try:
+        tudo = leitura.serie_mensal_casos(esc, primeiro, esc.ano)
+    except FileNotFoundError:
         return pd.DataFrame(columns=["ano_mes", "ano", "mes", "casos"])
 
-    tudo = pd.concat(partes, ignore_index=True)
+    if tudo.empty:
+        return pd.DataFrame(columns=["ano_mes", "ano", "mes", "casos"])
+
     tudo["ano_mes"] = (
         tudo["ano"].astype(str) + "-" + tudo["mes"].astype(int).astype(str).str.zfill(2)
     )
