@@ -47,3 +47,9 @@ cache/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# --- Documento interno, fora do versionamento a pedido --------------------
+# A crítica dos gráficos herdados da tuberculose é material de conversa com a
+# equipe (SES-PE), não decisão registrada. Entrou por engano no commit e046cd2
+# e saiu em 30/set/2026; o arquivo continua no disco de quem trabalha nele.
+docs/revisao-graficos.md
