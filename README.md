@@ -30,9 +30,9 @@ Onde difere do painel de origem e do MS:
 ## Dados
 
 A extração agregada do SINAN da equipe parceira, **só a parte de
-hanseníase**: `incidence`, `incidence_0_14`, `sinan_landing`, `_cache_ts`,
-`piramides` e os do SIM, com as partições `doenca=HANS` e
-`doenca=HANSENIASE`, mais as malhas da SES-PE em `data/support/`. São 44 MB,
+hanseníase**: `incidence`, `incidence_0_14`, `sinan_landing`, `sinan_dict`,
+`_cache_ts`, `cases_new` e `piramides`, com as partições `doenca=HANS` e
+`doenca=HANSENIASE`, mais as malhas da SES-PE em `data/support/`. São 46 MB,
 e o painel não lê nada fora de `data/` — apagar aqui não afeta outro projeto.
 Nenhum dado nominal entra.
 

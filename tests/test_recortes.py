@@ -79,7 +79,7 @@ def test_municipios_de_uma_regiao() -> None:
 
 
 @pytest.mark.parametrize("nivel", ["macro", "micro"])
-@pytest.mark.parametrize("metrica", ["casos", "cura", "pop", "obitos"])
+@pytest.mark.parametrize("metrica", ["casos", "cura", "pop"])
 def test_contagens_fecham_com_a_uf(nivel: str, metrica: str) -> None:
     componentes = leitura.componentes_municipais(ESCOPO)
     por_regiao = leitura.valores_por_regiao(ESCOPO, metrica, nivel)

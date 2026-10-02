@@ -29,23 +29,92 @@ esse recorte só existe para PE. Copie para `data/support/`.
 |---|---|---|---|
 | `incidence` | 325 k | `doenca/nivel/ano` | KPIs anuais: casos, óbitos, cura, população, incidência — com corte M/F |
 | `incidence_0_14` | 325 k | `doenca/nivel/ano` | Mesmas métricas para a faixa 0–14 anos |
-| `_cache_ts` | 1,2 M | `nivel/doenca/ano` | Série mensal: `mes`, `casos`, `casos_obitos`, `casos_cura`, `incid_100k` |
-| `piramides` | 13,2 M | `nivel/tipo/doenca/ano` | Pirâmide etária. `tipo` ∈ CASOS, CURA, OBITOS. Campos `valor`, `pop`, `ratio` |
+| `_cache_ts` | 1,2 M | `nivel/doenca/ano` | Série mensal: `mes`, `casos`, `casos_cura`, `pop_total`, `incid_100k`, `avalia_n` |
+| `piramides` | 13,2 M | `nivel/tipo/doenca/ano` | Pirâmide etária. O painel lê só `tipo=CASOS`. Campos `valor`, `pop`, `ratio` |
 | `sinan_landing` | 28,9 M | `doenca/nivel/ano` | Variáveis SINAN em formato longo: `variavel`, `valor`, `valor_lbl`, `n` |
 | `sinan_dict` | 4,5 k | — | Dicionário de código → rótulo |
-| `cache_ts_sim_obitos` | 65 k | `nivel/doenca/ano` | Óbitos do SIM, mensais |
-| `obitos_sim_faixa` | 57 k | `doenca/nivel/ano` | Óbitos do SIM por sexo e faixa etária |
 | `cases_new` | 205 k | `doenca/ano` | Casos novos por `cod_mun6` |
 | `_geo_cache/` | 652 MB | `municipios/uf=XX/` | GeoJSON por UF + `municipios_centroids.parquet` |
 
-A ordem das partições **não é uniforme** e a diferença é sutil: `cache_ts_sim_obitos`
-é `nivel/doenca/ano`, mas `obitos_sim_faixa`, que também vem do SIM, é
-`doenca/nivel/ano`. A ordem de cada dataset está declarada em
+A ordem das partições **não é uniforme**: `incidence` é `doenca/nivel/ano` e
+`_cache_ts` é `nivel/doenca/ano`. A ordem de cada dataset está declarada em
 `src/data/conexao.py::PARTICOES`.
 
 Globar a raiz de um dataset e filtrar no `WHERE` **não** funciona: os arquivos de
 `nivel=BR` não têm a coluna `uf`, e o DuckDB resolve a união pelo esquema do
 primeiro arquivo, fazendo colunas sumirem. Por isso a poda é feita pelo caminho.
+
+## O que pedir ao banco
+
+Escrito em 02/out/2026, quando a equipe do banco perguntou se a documentação
+listava tudo que a aplicação precisa. Não listava: até aqui o documento
+descrevia o **formato** dos parquets, não o **conteúdo** que eles têm de
+carregar. Esta seção é a lista, e ela sai do código — `src/data/leitura.py` e
+`src/doencas/hanseniase.py` são a fonte.
+
+### O painel não usa o SIM
+
+Nem óbito, nem mortalidade, nem letalidade aparecem em qualquer lugar da tela:
+não estão nos sete cards, não estão nas métricas do mapa e a pirâmide só
+desenha casos. Até 02/out/2026 o código lia `cache_ts_sim_obitos` a cada troca
+de recorte para calcular três números que ninguém via; saiu junto com
+`obitos_sim_faixa` e `obitos`. **Não pedir SIM.**
+
+### SINAN — as 16 variáveis da ficha
+
+Chegam pelo `sinan_landing`, em formato longo (`variavel`, `valor`,
+`valor_lbl`, `n`), já tabuladas. Uma variável que falte some de "tópicos de
+interesse"; as marcadas abaixo derrubam números que estão nos cards.
+
+| Variável | Para quê | Se faltar |
+|---|---|---|
+| `MODOENTR` | **Casos novos pela definição do MS** (`=1`) | cards de casos e detecção, mapa, ranking |
+| `TPALTA_N` | **Cura, abandono e contatos examinados** | três dos quatro cards de qualidade |
+| `AVALIA_N` | **Grau de incapacidade no diagnóstico** | card de grau II e o GIF avaliado |
+| `CLASSOPERA` | Classificação operacional (MB/PB) | card de multibacilar e um gráfico anual |
+| `CONTEXAM`, `CONTREG` | Contatos examinados e registrados | gráfico de contatos |
+| `FORMACLINI` | Forma clínica | tópico |
+| `MODODETECT` | Modo de detecção | tópico |
+| `BACILOSCOP` | Baciloscopia | tópico |
+| `NERVOSAFET` | Nº de nervos afetados | tópico |
+| `EPIS_RACIO` | Reação hansênica | tópico |
+| `ESQ_INI_N` | Esquema inicial | tópico |
+| `DOSE_RECEB` | Doses recebidas | tópico |
+| `CS_RACA`, `CS_ESCOL_N`, `CS_GESTANT` | Perfil | tópicos |
+
+Chaves que toda linha precisa ter: **município de residência**
+(`CO_MUNI_RESIDENCIA`, não o de notificação — ver armadilha 8), **ano** e
+**mês** do diagnóstico, **sexo** e **faixa etária**.
+
+### O que falta na extração de hoje
+
+Estas três ausências estão medidas e registradas em `paridade-hanseniase.md`.
+Nenhuma é defeito do painel; são limites do que recebemos.
+
+1. **Cruzamento modo de entrada × faixa etária, grau e cura.** Sem ele, casos
+   0–14, grau II, curas e a série mensal contam todas as entradas, e não só
+   casos novos. É o que faz a soma dos meses de 2024 ficar ~40% acima dos
+   casos novos do ano.
+2. **População de menores de 15 anos** por município e ano. Sem ela a taxa de
+   detecção 0–14 usa denominador aproximado.
+3. **Cruzamento `AVAL_ATU_N` × `TPALTA_N`.** É o que permitiria a proporção de
+   casos curados com GIF avaliado, pedida pela equipe parceira em 02/out/2026.
+   Sem o cruzamento a conta dá 163% em 2025 — o campo é preenchido para quem
+   encerrou o tratamento de qualquer forma, não só para quem curou.
+
+### Os demais datasets
+
+Agregados, um por indicador. As colunas abaixo são as que o código lê; o resto
+do esquema pode vir ou não.
+
+| Dataset | Colunas lidas |
+|---|---|
+| `incidence` | `casos_total`, `casos_cura`, `pop_total`, `incid_100k_total`, `casos_grau_0`, `casos_grau_I`, `casos_grau_II`, `casos_nao_avaliado` |
+| `incidence_0_14` | `casos_0_14_total`, `casos_0_14_M`, `casos_0_14_F`, `casos_0_14_cura`, `pop_0_14_total`, `incid_0_14_100k_total` |
+| `_cache_ts` | `mes`, `mes_nome`, `casos`, `casos_cura`, `pop_total`, `incid_100k`, `avalia_n`, `uf`, `geo_id` |
+| `cases_new` | `cod_mun6`, `casos_novos` |
+| `piramides` | `sexo`, `faixa_ord`, `faixa_etaria`, `valor`, `pop`, `ratio` (só `tipo=CASOS`) |
+| `sinan_dict` | `variavel`, `valor`, `valor_lbl` |
 
 ## Fórmulas dos KPIs
 

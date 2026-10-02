@@ -174,7 +174,7 @@ def municipios_de(
 
 #: Componentes necessários para recalcular cada métrica depois de agregar.
 #: A chave é a métrica; o valor é como derivá-la das somas.
-COMPONENTES = ("casos", "cura", "pop", "obitos", "casos_0_14", "pop_0_14")
+COMPONENTES = ("casos", "cura", "pop", "casos_0_14", "pop_0_14")
 
 
 def agregar(
@@ -206,9 +206,5 @@ def agregar(
 
     if metrica == "incid" and {"casos", "pop"} <= set(somas.columns):
         return somas["casos"] / somas["pop"].replace(0, pd.NA) * 100_000
-    if metrica == "mortalidade" and {"obitos", "pop"} <= set(somas.columns):
-        return somas["obitos"] / somas["pop"].replace(0, pd.NA) * 100_000
-    if metrica == "letalidade" and {"obitos", "casos"} <= set(somas.columns):
-        return somas["obitos"] / somas["casos"].replace(0, pd.NA) * 100
 
     return pd.Series(dtype=float)

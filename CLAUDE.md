@@ -104,8 +104,9 @@ PE) → `src/data/*` → `src/mapa.py`/`mapa_componente.py` e
   o nome promete, é idêntico a `casos_total`: não serve (§1.3).
 - **`/XD data` no robocopy engole `src/data`** — foi assim que a camada de
   dados quase não veio. Mesma armadilha do `/data/` no `.gitignore`.
-- **O SIM para em 2024**: `componentes_municipais` tolera a partição ausente,
-  senão o mapa por macro cai no último ano.
+- **O painel não usa o SIM** (desde 02/out/2026): óbito, mortalidade e
+  letalidade não estão na tela, e o código os lia à toa. Ao pedir dado ao
+  banco, não pedir SIM — `docs/contrato-dados.md`, "O que pedir ao banco".
 - **Ano parcial se detecta** (`meses_com_dado`), não se presume: 2025 tem
   12 meses; a origem o marca como parcial e está errada.
 - As do sinan continuam valendo: glob na raiz de dataset, `sexo='TOTAL'`,

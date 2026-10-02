@@ -36,17 +36,16 @@ from pathlib import Path
 
 #: Datasets que o painel abre, com as partições de hanseníase filtradas.
 #:
-#: `dim_geo` (31 MB) ficou de fora porque nenhum leitor o menciona; os do SIM
-#: entram porque `kpis.calcular` os consulta mesmo sem a hanseníase publicar
-#: mortalidade — sem eles o leitor cai em `FileNotFoundError`.
+#: Fora: `dim_geo` (31 MB), `obitos` e os dois do SIM (`cache_ts_sim_obitos`,
+#: `obitos_sim_faixa`). Nenhum leitor os menciona desde 02/out/2026 — a
+#: hanseníase não mostra óbito, mortalidade nem letalidade em lugar nenhum do
+#: painel, e `kpis.calcular` lia o SIM a cada troca de recorte para calcular
+#: três números que ninguém via.
 DATASETS = (
     "_cache_ts",
-    "cache_ts_sim_obitos",
     "cases_new",
     "incidence",
     "incidence_0_14",
-    "obitos",
-    "obitos_sim_faixa",
     "piramides",
     "sinan_dict",
     "sinan_landing",

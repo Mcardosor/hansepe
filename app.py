@@ -18,7 +18,7 @@ import pandas as pd
 import streamlit as st
 
 from src import doencas, grafico_componente, mapa, mapa_componente, resiliencia
-from src.data import canal, geo, leitura, recortes
+from src.data import canal, config, geo, leitura, recortes
 from src.data import kpis as calc
 from src.data.escopo import Escopo
 from src.estado import RECORTES, UF_FIXA, Navegacao
@@ -257,8 +257,19 @@ def _municipios() -> dict[str, str]:
 # Estado
 # ---------------------------------------------------------------------------
 
+def _ano_de_abertura() -> int:
+    """O ano em que o painel abre: `ANO_PADRAO`, se existir no disco.
+
+    Não é o último ano. Em 2025 a coorte não fechou, e cura, abandono e
+    contatos abrem vazios. O recuo cai para o último disponível se a cópia
+    de dados ainda não tiver o ano padrão.
+    """
+    anos = _anos()
+    return config.ANO_PADRAO if config.ANO_PADRAO in anos else anos[-1]
+
+
 if "nav" not in st.session_state:
-    st.session_state.nav = Navegacao(doenca=pack.DOENCA, ano=_anos()[-1])
+    st.session_state.nav = Navegacao(doenca=pack.DOENCA, ano=_ano_de_abertura())
 nav: Navegacao = st.session_state.nav
 
 

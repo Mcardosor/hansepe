@@ -25,13 +25,10 @@ CORES = {
     "primary": "#12346B",
     "secondary": "#1E73BE",
     "casos": "#C1440A",
-    "obitos": "#DC2626",
     "cura": "#16A34A",
     "cura_pct": "#16A34A",
     "pop": "#6B7280",
     "incid": "#92400E",
-    "mortalidade": "#1D4ED8",
-    "letalidade": "#6D28D9",
     "casos_0_14": "#B45309",
     "taxa_det_0_14": "#B45309",
     # Roxos do painel de origem, para as duas proporções clínicas.
@@ -47,12 +44,9 @@ CORES = {
 
 ROTULOS = {
     "casos": "Casos novos",
-    "obitos": "Óbitos",
     "cura": "Curas",
     "pop": "População",
     "incid": "Taxa de detecção (por 100 mil hab.)",
-    "mortalidade": "Taxa de mortalidade (por 100 mil hab.)",
-    "letalidade": "Letalidade (%)",
     "casos_0_14": "Casos novos de 0 a 14 anos",
     "taxa_det_0_14": "Taxa de detecção 0–14 (por 100 mil hab.)",
     # Nomes como o painel de origem escreve nos cards.
@@ -157,13 +151,13 @@ METRICAS_MAPA = ("incid", "taxa_det_0_14", "casos", "casos_0_14", "cura")
 
 #: Métricas em que uma queda é boa.
 BOM_SE_CAI = frozenset(
-    {"casos", "obitos", "incid", "mortalidade", "letalidade",
+    {"casos", "incid",
      "casos_0_14", "taxa_det_0_14", "prop_grau2_pct", "abandono_pct"}
 )
 
 #: Métricas exibidas com casas decimais.
 TAXAS = frozenset(
-    {"incid", "mortalidade", "letalidade", "taxa_det_0_14",
+    {"incid", "taxa_det_0_14",
      "cura_pct", "prop_mb_pct", "prop_grau2_pct",
      "abandono_pct", "contatos_pct", "gif_avaliado_pct"}
 )

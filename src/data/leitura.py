@@ -29,8 +29,6 @@ def _uma_linha(sql: str, params: list) -> dict:
 def incidencia(esc: Escopo) -> dict:
     """Linha de ``incidence`` para o recorte: casos, cura, população, incidência.
 
-    ``casos_obitos`` daqui não é confiável — vem zerado para algumas doenças
-    em todos os anos. Óbito se lê do SIM, por :func:`obitos_sim`.
     """
     fonte = caminho(
         "incidence",
@@ -70,33 +68,6 @@ def incidencia_0_14(esc: Escopo) -> dict:
     return _uma_linha(sql, params)
 
 
-def obitos_sim(esc: Escopo) -> float | None:
-    """Óbitos do SIM no recorte — a fonte real de mortalidade.
-
-    Devolve ``None`` quando o ano ainda não fechou no SIM, que fica um ano
-    atrás do SINAN. Sem isto, arrastar o slider para o ano corrente derrubava
-    a página com um erro de arquivo não encontrado.
-    """
-    try:
-        fonte = caminho(
-            "cache_ts_sim_obitos",
-            nivel=esc.nivel,
-            doenca=config.cod_sim(esc.doenca),
-            ano=esc.ano,
-        )
-    except ParticaoAusente:
-        return None
-    sql = f"SELECT sum(casos_obitos) FROM read_parquet('{fonte}', hive_partitioning=true)"
-    params: list = []
-    if esc.nivel == "UF":
-        sql += " WHERE uf = ?"
-        params.append(esc.uf)
-    elif esc.nivel == "MUN":
-        sql += " WHERE geo_id = ?"
-        params.append(mun6(esc.mun))
-    linha = conectar().execute(sql, params).fetchone()
-    return None if linha is None else linha[0]
-
 
 #: Estratos de ``avalia_n`` no ``_cache_ts`` da hanseníase, como vêm gravados
 #: (sem acento). É o filtro "grau de incapacidade" do painel de origem.
@@ -130,8 +101,7 @@ def serie_mensal(esc: Escopo, grau: str | None = None) -> pd.DataFrame:
     onde = f" WHERE {' AND '.join(condicoes)}" if condicoes else ""
     sql = f"""
         SELECT mes, any_value(mes_nome) AS mes_nome,
-               sum(casos) AS casos, sum(casos_obitos) AS casos_obitos,
-               sum(casos_cura) AS casos_cura, max(pop_total) AS pop_total,
+               sum(casos) AS casos, sum(casos_cura) AS casos_cura, max(pop_total) AS pop_total,
                sum(casos) / nullif(max(pop_total), 0) * 100000 AS incid_100k
         FROM read_parquet('{fonte}', hive_partitioning=true){onde}
         GROUP BY mes ORDER BY mes
@@ -227,11 +197,11 @@ def anos_disponiveis(doenca: str) -> list[int]:
 def piramide(esc: Escopo, tipo: str = "CASOS") -> pd.DataFrame:
     """Pirâmide etária: evento e população por sexo e faixa.
 
-    ``tipo`` é ``CASOS``, ``CURA`` ou ``OBITOS``.
+    ``tipo`` é ``CASOS`` ou ``CURA``.
     """
     tipo = str(tipo or "CASOS").strip().upper()
-    if tipo not in ("CASOS", "CURA", "OBITOS"):
-        raise ValueError(f"Tipo inválido: {tipo!r}. Esperado CASOS, CURA ou OBITOS.")
+    if tipo not in ("CASOS", "CURA"):
+        raise ValueError(f"Tipo inválido: {tipo!r}. Esperado CASOS ou CURA.")
 
     particao, onde_geo, params_geo = particao_e_filtro_geo(esc)
     fonte = caminho(
@@ -275,38 +245,6 @@ def casos_novos(esc: Escopo) -> float | None:
     return None if linha is None else linha[0]
 
 
-def obitos_por_faixa(esc: Escopo) -> pd.DataFrame:
-    """Óbitos do SIM por sexo e faixa etária.
-
-    Este dataset só existe no nível MUN — não há partições de UF nem de BR.
-    A agregação para os níveis acima é feita aqui, filtrando por ``cod_uf``.
-
-    Devolve vazio quando o ano ainda não fechou no SIM — mesma defasagem de
-    :func:`obitos_sim`.
-    """
-    try:
-        fonte = caminho(
-            "obitos_sim_faixa",
-            doenca=config.cod_sim(esc.doenca),
-            nivel="MUN",
-            ano=esc.ano,
-        )
-    except ParticaoAusente:
-        return pd.DataFrame(columns=["sexo", "faixa_ord", "faixa_etaria", "obitos"])
-    sql = f"""
-        SELECT sexo, faixa_ord, faixa_etaria, sum(obitos_sim) AS obitos
-        FROM read_parquet('{fonte}', hive_partitioning=true)
-    """
-    params: list = []
-    if esc.nivel == "UF":
-        sql += " WHERE cod_uf = ?"
-        params.append(config.codigo_uf(esc.uf))
-    elif esc.nivel == "MUN":
-        sql += " WHERE cod_mun = ?"
-        params.append(esc.mun)
-    sql += " GROUP BY 1, 2, 3 ORDER BY faixa_ord, sexo"
-    return conectar().execute(sql, params).fetchdf()
-
 
 def dicionario(doenca: str, variavel: str | None = None) -> pd.DataFrame:
     """Dicionário de código → rótulo das variáveis do SINAN.
@@ -342,8 +280,6 @@ _COLUNA_0_14 = {
     "taxa_det_0_14": "incid_0_14_100k_total",
 }
 
-#: Métricas derivadas de óbitos do SIM, que `incidence` não tem.
-_DERIVADA_DE_OBITO = {"obitos", "mortalidade", "letalidade"}
 
 #: Razões que saem de duas colunas do próprio `incidence`, sem outra fonte.
 #:
@@ -435,40 +371,6 @@ def valores_por_geografia(esc: Escopo, metrica: str) -> pd.Series:
         valor = df["num"] / df["den"].replace(0, pd.NA) * 100
         return pd.Series(valor.values, index=df[chave])
 
-    if metrica in _DERIVADA_DE_OBITO:
-        base = conectar().execute(
-            f"SELECT {chave}, casos_total, pop_total "
-            f"FROM read_parquet('{fonte}', hive_partitioning=true){onde}",
-            params,
-        ).fetchdf()
-
-        sim = caminho(
-            "cache_ts_sim_obitos",
-            nivel="MUN" if desce_para_municipio else "UF",
-            doenca=config.cod_sim(esc.doenca),
-            ano=esc.ano,
-        )
-        chave_sim = "geo_id" if desce_para_municipio else "uf"
-        obitos = conectar().execute(
-            f"SELECT {chave_sim} AS {chave}, sum(casos_obitos) AS obitos "
-            f"FROM read_parquet('{sim}', hive_partitioning=true)"
-            + (" WHERE uf = ?" if desce_para_municipio else "")
-            + f" GROUP BY {chave_sim}",
-            params if desce_para_municipio else [],
-        ).fetchdf()
-
-        juncao = base.merge(obitos, on=chave, how="left")
-        juncao["obitos"] = juncao["obitos"].fillna(0)
-
-        if metrica == "obitos":
-            valor = juncao["obitos"]
-        elif metrica == "mortalidade":
-            valor = juncao["obitos"] / juncao["pop_total"].replace(0, pd.NA) * 100_000
-        else:
-            valor = juncao["obitos"] / juncao["casos_total"].replace(0, pd.NA) * 100
-
-        return pd.Series(valor.values, index=juncao[chave])
-
     # As demais (0-14, HIV, interrupção) exigem outros datasets e entram
     # quando o mapa passar a aceitá-las. Melhor um mapa vazio e honesto do
     # que um mapa colorido com a métrica errada.
@@ -476,7 +378,7 @@ def valores_por_geografia(esc: Escopo, metrica: str) -> pd.Series:
 
 
 def componentes_municipais(esc: Escopo) -> pd.DataFrame:
-    """Casos, cura, população e óbitos por município da UF.
+    """Casos, cura e população por município da UF.
 
     Base para agregar por macrorregião e região de saúde: as taxas precisam
     ser recalculadas a partir das somas, não tiradas como média das taxas
@@ -485,35 +387,12 @@ def componentes_municipais(esc: Escopo) -> pd.DataFrame:
     fonte = caminho(
         "incidence", doenca=config.cod_agregado(esc.doenca), nivel="MUN", ano=esc.ano
     )
-    base = conectar().execute(
+    juncao = conectar().execute(
         f"SELECT cod_mun6, casos_total AS casos, casos_cura AS cura, "
         f"pop_total AS pop FROM read_parquet('{fonte}', hive_partitioning=true) "
         f"WHERE uf = ?",
         [esc.uf],
     ).fetchdf()
-
-    # O SIM fecha um ano depois do SINAN: no ano corrente a partição não
-    # existe, e isso é ausência normal, não erro — sem esta guarda o mapa por
-    # macrorregião caía inteiro no último ano.
-    try:
-        sim = caminho(
-            "cache_ts_sim_obitos",
-            nivel="MUN",
-            doenca=config.cod_sim(esc.doenca),
-            ano=esc.ano,
-        )
-    except ParticaoAusente:
-        obitos = pd.DataFrame({"cod_mun6": pd.Series(dtype=str), "obitos": pd.Series(dtype=float)})
-    else:
-        obitos = conectar().execute(
-            f"SELECT geo_id AS cod_mun6, sum(casos_obitos) AS obitos "
-            f"FROM read_parquet('{sim}', hive_partitioning=true) "
-            f"WHERE uf = ? GROUP BY geo_id",
-            [esc.uf],
-        ).fetchdf()
-
-    juncao = base.merge(obitos, on="cod_mun6", how="left")
-    juncao["obitos"] = juncao["obitos"].fillna(0)
 
     if esc.doenca == config.HANSENIASE:
         # Casos novos do MS no lugar de `casos_total` — a mesma troca de
@@ -647,7 +526,6 @@ def ranking(
 _COLUNA_MENSAL = {
     "casos": "casos",
     "cura": "casos_cura",
-    "obitos": "casos_obitos",
     "pop": "pop_total",
     "incid": "incid_100k",
 }
@@ -666,10 +544,6 @@ def serie_mensal_metrica(esc: Escopo, metrica: str, grau: str | None = None) -> 
 
     if metrica in _COLUNA_MENSAL:
         valor = bruto[_COLUNA_MENSAL[metrica]]
-    elif metrica == "mortalidade":
-        valor = bruto["casos_obitos"] / bruto["pop_total"].replace(0, pd.NA) * 100_000
-    elif metrica == "letalidade":
-        valor = bruto["casos_obitos"] / bruto["casos"].replace(0, pd.NA) * 100
     else:
         return pd.DataFrame(columns=["mes", "mes_nome", "valor"])
 
@@ -696,8 +570,7 @@ def serie_dupla(esc: Escopo, horizonte: str = "meses", grau: str | None = None) 
     )
 
 
-#: Ordem canônica das faixas, vinda de `piramides`. `obitos_sim_faixa` usa os
-#: mesmos códigos e rótulos, só não traz linha onde não houve óbito.
+#: Ordem canônica das faixas, vinda de `piramides`.
 FAIXAS = (
     (0, "0 a 4 anos"), (5, "5 a 9 anos"), (10, "10 a 14 anos"),
     (15, "15 a 19 anos"), (20, "20 a 29 anos"), (30, "30 a 39 anos"),
@@ -707,13 +580,11 @@ FAIXAS = (
 
 #: Tipos de pirâmide e de onde cada um vem hoje.
 #:
-#: `piramides` traz CURA e OBITOS zerados para tuberculose — o dado existe na
-#: fonte (54.323 curas e 6.668 óbitos no país em 2024, com sexo e idade em mais
-#: de 99,9%), mas some no pipeline. Ver docs/perguntas-equipe-r.md.
+#: `piramides` traz CURA zerada para tuberculose — o dado existe na fonte,
+#: mas some no pipeline. Ver docs/perguntas-equipe-r.md.
 #:
-#: Óbitos têm alternativa local: `obitos_sim_faixa`, do SIM. É outra fonte —
-#: SIM em vez de SINAN — e por isso o total difere do card, que vem de
-#: `cache_ts_sim_obitos`, também do SIM mas com outro corte geográfico.
+#: Óbito saiu em 02/out/2026 junto com o resto do SIM: a hanseníase não
+#: mostra óbito em lugar nenhum do painel.
 #:
 #: Cura não tem: `incidence` quebra por sexo mas não por idade, e
 #: `incidence_0_14` cobre só uma faixa. Precisa do banco.
@@ -723,7 +594,6 @@ COLUNAS_PIRAMIDE = ["sexo", "faixa_ord", "faixa_etaria", "valor", "pop"]
 
 FONTE_PIRAMIDE = {
     "CASOS": "piramides",
-    "OBITOS": "obitos_sim_faixa",
     "CURA": None,
 }
 
@@ -742,16 +612,10 @@ def piramide_completa(esc: Escopo, tipo: str = "CASOS") -> pd.DataFrame:
     if FONTE_PIRAMIDE[tipo] is None:
         return pd.DataFrame(columns=COLUNAS_PIRAMIDE)
 
-    if tipo == "CASOS":
-        bruto = piramide(esc, "CASOS")
-        if bruto.empty:
-            return pd.DataFrame(columns=COLUNAS_PIRAMIDE)
-        base = bruto[["sexo", "faixa_ord", "faixa_etaria", "valor", "pop"]]
-    else:
-        bruto = obitos_por_faixa(esc)
-        if bruto.empty:
-            return pd.DataFrame(columns=COLUNAS_PIRAMIDE)
-        base = bruto.rename(columns={"obitos": "valor"}).assign(pop=pd.NA)
+    bruto = piramide(esc, "CASOS")
+    if bruto.empty:
+        return pd.DataFrame(columns=COLUNAS_PIRAMIDE)
+    base = bruto[["sexo", "faixa_ord", "faixa_etaria", "valor", "pop"]]
 
     # Completa as faixas ausentes com zero, por sexo.
     completo = pd.DataFrame(

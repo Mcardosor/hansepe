@@ -21,7 +21,7 @@ from src.estado import RECORTES, Navegacao
 ANO = 2024
 
 #: As métricas que o mapa sabe pintar hoje.
-PINTAVEIS = ("incid", "casos", "cura", "pop", "mortalidade", "letalidade")
+PINTAVEIS = ("incid", "casos", "cura", "pop")
 
 
 def _camada_e_chave(nav: Navegacao):

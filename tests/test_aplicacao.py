@@ -29,6 +29,8 @@ pytest.importorskip("duckdb")
 from streamlit.testing.v1 import AppTest  # noqa: E402
 
 from src import resiliencia  # noqa: E402
+from src.data import config  # noqa: E402
+from src.doencas import hanseniase as pack  # noqa: E402
 from src.estado import Navegacao  # noqa: E402
 
 #: Generoso porque a primeira execução paga a leitura de geometria; as demais
@@ -138,8 +140,6 @@ def test_a_piramide_por_100_mil_monta() -> None:
 
 
 def test_toda_variavel_da_composicao_monta() -> None:
-    from src.doencas import hanseniase as pack
-
     at = _rodar()
     multi = next(m for m in at.multiselect if m.label == "O que exibir")
     multi.set_value(list(pack.variaveis_planas())).run()
@@ -214,3 +214,21 @@ def test_a_janela_abre_em_dez_anos() -> None:
     at = _rodar()
     botoes = next(c for c in at.segmented_control if c.label == "Janela")
     assert botoes.value == 10
+
+
+def test_o_painel_abre_no_ultimo_ano_de_coorte_fechada() -> None:
+    """Abre em 2024, não no último ano disponível.
+
+    Em 2025 a coorte não fechou: cura, abandono e contatos aparecem vazios, e
+    quem abre o painel sozinho vê três cards em branco antes de ler o porquê.
+    A equipe parceira pediu isso em 02/out/2026.
+
+    Nasceu de um erro: eu troquei o valor padrão do campo `ano` no `Navegacao`
+    e não vi que o `app.py` o sobrescrevia com o último ano do disco. Os 423
+    testes passaram e o painel subiu abrindo em 2025 do mesmo jeito. O teste é
+    sobre o ano que aparece **na tela**, que é onde o erro estava.
+    """
+    at = _rodar()
+    seletor = next(s for s in at.selectbox if s.label == "Ano")
+    assert seletor.value == config.ANO_PADRAO
+    assert config.ANO_PADRAO != max(seletor.options)

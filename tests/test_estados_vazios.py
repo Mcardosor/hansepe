@@ -1,9 +1,11 @@
 """Recortes-limite: ano não consolidado, município sem caso.
 
 O painel é demonstrado ao vivo, e é nos cantos que ele quebra. O caso do ano
-foi encontrado assim: o slider oferece 2025 porque `incidence` tem 2025, mas
-o SIM fecha depois e `cache_ts_sim_obitos` para em 2024 — arrastar o slider
-até o fim derrubava a página com um erro de arquivo não encontrado.
+foi encontrado assim: o slider oferece um ano que um dos datasets ainda não
+tem, e arrastar o slider até o fim derrubava a página com um erro de arquivo
+não encontrado. O SIM, que era o dataset atrasado, saiu em 02/out/2026 — a
+distinção entre partição ausente e dataset ausente continua valendo para os
+que ficaram.
 """
 
 from __future__ import annotations
@@ -15,44 +17,25 @@ from src.data import kpis as calc
 from src.data.escopo import Escopo
 from src.doencas import hanseniase as pack
 
-#: Ano oferecido pelo slider que o SIM ainda não fechou.
-ANO_SEM_SIM = 2025
+#: Último ano oferecido pelo slider.
+ANO_LIMITE = 2025
 
 
-def test_o_slider_realmente_alcanca_um_ano_sem_sim() -> None:
+def test_o_slider_realmente_alcanca_o_ano_limite() -> None:
     """A premissa do módulo. Se deixar de valer, estes testes viram teatro."""
-    assert ANO_SEM_SIM in leitura.anos_disponiveis(pack.DOENCA)
+    assert ANO_LIMITE in leitura.anos_disponiveis(pack.DOENCA)
 
 
 def test_particao_ausente_e_distinta_de_dataset_ausente() -> None:
     """Ano não consolidado é ausência de dado; dataset sumido é configuração."""
     with pytest.raises(conexao.ParticaoAusente):
         conexao.caminho(
-            "cache_ts_sim_obitos", nivel="BR", doenca="TUBE", ano=ANO_SEM_SIM
+            "incidence", doenca="HANSENIASE", nivel="BR", ano=1999
         )
 
     with pytest.raises(FileNotFoundError) as erro:
         conexao.caminho("dataset_que_nao_existe", nivel="BR")
     assert not isinstance(erro.value, conexao.ParticaoAusente)
-
-
-@pytest.mark.parametrize("nivel,uf", [("BR", None), ("UF", "PE")])
-def test_ano_sem_sim_nao_levanta(nivel: str, uf: str | None) -> None:
-    esc = Escopo(pack.DOENCA, ANO_SEM_SIM, nivel, uf=uf)
-    k = calc.calcular(esc)
-    # Casos existem (vêm do SINAN); mortalidade não, e isso é um vazio
-    # legítimo, não um zero — zero diria que ninguém morreu.
-    assert k.casos
-    assert k.obitos is None
-    assert k.mortalidade is None
-    assert k.letalidade is None
-
-
-def test_piramide_de_obitos_vazia_no_ano_sem_sim() -> None:
-    esc = Escopo(pack.DOENCA, ANO_SEM_SIM, "BR")
-    assert leitura.piramide_completa(esc, "OBITOS").empty
-    # Casos continuam, porque vêm de outra fonte.
-    assert not leitura.piramide_completa(esc, "CASOS").empty
 
 
 def _municipio_sem_caso(uf: str = "MG") -> str | None:

@@ -42,7 +42,6 @@ def _div(numerador, denominador, fator: float = 1.0) -> float | None:
 @dataclass(frozen=True, slots=True)
 class Kpis:
     casos: float | None = None
-    obitos: float | None = None
     cura: float | None = None
     #: Encerramentos por cura sobre **todos os encerramentos**, que é o
     #: denominador da Tabela 9 do Boletim de TB 2026 e o mesmo de
@@ -55,13 +54,10 @@ class Kpis:
     #:
     #: Continua sendo aproximação de coorte — o tratamento leva cerca de seis
     #: meses, então parte dos casos de um ano só encerra no seguinte, e não há
-    #: como fechar a coorte com os agregados que recebemos. `letalidade`
-    #: convive com a mesma aproximação, pelo mesmo motivo.
+    #: como fechar a coorte com os agregados que recebemos.
     cura_pct: float | None = None
     pop: float | None = None
     incid: float | None = None
-    mortalidade: float | None = None
-    letalidade: float | None = None
     casos_0_14: float | None = None
     pop_0_14: float | None = None
     taxa_det_0_14: float | None = None
@@ -117,9 +113,6 @@ def calcular(esc: Escopo) -> Kpis:
     cura = inc.get("casos_cura")
     pop = inc.get("pop_total")
 
-    # Óbitos vêm do SIM, não de incidence — lá o campo é zero para TB.
-    obitos = leitura.obitos_sim(esc)
-
     casos_0_14 = inc14.get("casos_0_14_total")
     pop_0_14 = inc14.get("pop_0_14_total")
 
@@ -127,12 +120,9 @@ def calcular(esc: Escopo) -> Kpis:
     # `proporcoes_hanseniase`, que entra no fim e traz os campos junto.
     return Kpis(
         casos=_num(casos),
-        obitos=_num(obitos),
         cura=_num(cura),
         pop=_num(pop),
         incid=_div(casos, pop, POR_100K),
-        mortalidade=_div(obitos, pop, POR_100K),
-        letalidade=_div(obitos, casos, 100),
         casos_0_14=_num(casos_0_14),
         pop_0_14=_num(pop_0_14),
         taxa_det_0_14=_div(casos_0_14, pop_0_14, POR_100K),
