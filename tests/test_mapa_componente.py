@@ -81,3 +81,33 @@ def test_scripts_dos_componentes_levam_a_versao_no_nome() -> None:
         for nome, versao in scripts:
             esperado = hashlib.sha1((pasta / nome).read_bytes()).hexdigest()[:8]
             assert versao == esperado, f"{pasta.name}/{nome}: carimbo {versao} != {esperado} — rode scripts/versionar_js.py"
+
+
+def test_o_css_do_tooltip_mira_a_classe_que_o_deck_cria() -> None:
+    """O deck nomeia o balão `deck-tooltip`, não `tooltip`.
+
+    Durante meses a regra dizia `.tooltip` e não casava com nada: o balão
+    ficava sem largura máxima e, perto da borda, o `overflow:hidden` do body
+    cortava o que passava. A equipe viu isso em Fernando de Noronha, que fica
+    no canto superior direito do mapa.
+
+    O erro é invisível em revisão de código — CSS que não casa não dá erro,
+    só não faz nada. Por isso o teste é sobre o nome da classe.
+    """
+    html = (mapa_componente.DIRETORIO / "index.html").read_text(encoding="utf-8")
+    assert ".deck-tooltip" in html
+    assert "\n  .tooltip {" not in html, "a regra morta voltou"
+
+
+def test_o_tooltip_e_reposicionado_depois_de_medido() -> None:
+    """Virar o balão para o lado que couber exige medir a caixa renderizada.
+
+    O balão muda de altura com o número de linhas de detalhe; estimar o
+    tamanho pelo texto erraria justamente nos maiores, que são os que
+    estouram. Daí `offsetWidth`/`offsetHeight` num quadro posterior ao que o
+    deck usa para escrever `left`/`top`.
+    """
+    js = (mapa_componente.DIRETORIO / "mapa.js").read_text(encoding="utf-8")
+    assert "encaixarTooltip" in js
+    assert "requestAnimationFrame(encaixarTooltip)" in js
+    assert "offsetWidth" in js and "offsetHeight" in js
