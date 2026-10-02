@@ -65,13 +65,6 @@ ROTULOS = {
     "gif_avaliado_pct": "GIF avaliado no diagnóstico",
 }
 
-#: De onde vêm os parâmetros de classificação exibidos na tela. Pedido da
-#: reunião de 22/set/2026: a legenda precisa dizer que régua está usando.
-FONTE_PARAMETROS = (
-    "Parâmetros do Boletim Epidemiológico de Hanseníase — "
-    "SES-PE/SEVSAP, 2025 (dados tabulados em 16/04/2025)"
-)
-
 #: Os quadros de parâmetros do boletim, **palavra por palavra**, para irem
 #: ao lado do gráfico como lá. Título e linhas na ordem em que o boletim
 #: escreve — do mais grave para o menos, o contrário da legenda do mapa.
@@ -106,7 +99,7 @@ TEXTO_PARAMETROS: dict[str, tuple[str, tuple[str, ...]]] = {
     ),
     "cura_pct": (
         "% Cura",
-        ("Bom ≥ 90%", "Regular ≥ 75 a 89,9%", "Precário < 75%"),
+        ("Bom ≥ 90%", "Regular 75 a 89,9%", "Precário < 75%"),
     ),
     "abandono_pct": (
         "% Abandono",
@@ -114,11 +107,11 @@ TEXTO_PARAMETROS: dict[str, tuple[str, tuple[str, ...]]] = {
     ),
     "contatos_pct": (
         "% Contatos examinados",
-        ("Bom ≥ 90%", "Regular ≥ 75 a 89,9%", "Precário < 75%"),
+        ("Bom ≥ 90%", "Regular 75 a 89,9%", "Precário < 75%"),
     ),
     "gif_avaliado_pct": (
         "% Grau de incapacidade",
-        ("Bom ≥ 90%", "Regular ≥ 75 a 89,9%", "Precário < 75%"),
+        ("Bom ≥ 90%", "Regular 75 a 89,9%", "Precário < 75%"),
     ),
 }
 

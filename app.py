@@ -63,11 +63,7 @@ AJUDA_CLASSIFICACAO = """Como as cores repartem os valores.
 
 **Quintis** põem um quinto dos municípios em cada cor — é a classificação do painel de origem. Fácil de explicar, mas a régua muda a cada ano.
 
-**Endemicidade** usa os parâmetros oficiais: Baixo (< 2), Médio (2,00–9,99), Alto (10,00–19,99), Muito alto (20,00–39,99) e Hiperendêmico (≥ 40 por 100 mil). É a única que deixa dois anos comparáveis.
-
-{fonte}"""
-
-AJUDA_CLASSIFICACAO = AJUDA_CLASSIFICACAO.format(fonte=pack.FONTE_PARAMETROS)
+**Endemicidade** usa os parâmetros oficiais: Baixo (< 2), Médio (2,00–9,99), Alto (10,00–19,99), Muito alto (20,00–39,99) e Hiperendêmico (≥ 40 por 100 mil). É a única que deixa dois anos comparáveis."""
 
 TODO_O_ESTADO = "— todo o estado —"
 
@@ -341,7 +337,7 @@ if (meses := _meses_com_dado(nav.ano)) < 12:
     )
 
 
-def _quadro(metrica: str, fonte: bool = False) -> None:
+def _quadro(metrica: str) -> None:
     """O quadro de parâmetros do boletim, quando a métrica tem um.
 
     Vai ao lado do gráfico, como no documento: foi o pedido da reunião de
@@ -351,9 +347,7 @@ def _quadro(metrica: str, fonte: bool = False) -> None:
     if texto := pack.texto_parametros(metrica):
         titulo, linhas = texto
         st.markdown(
-            ui.quadro_parametros(
-                titulo, linhas, fonte=pack.FONTE_PARAMETROS if fonte else ""
-            ),
+            ui.quadro_parametros(titulo, linhas),
             unsafe_allow_html=True,
         )
 
@@ -871,19 +865,10 @@ with resiliencia.painel("Indicadores de qualidade"), st.container(
         with coluna:
             _card(metrica, atual, anterior)
 
-    # Uma linha por régua, e não um quadro por card: três dos quatro
-    # indicadores usam a mesma (Bom ≥ 90%), e repeti-la embaixo de cards que
-    # já dizem "Regular" enchia meia tela. O agrupamento é pelo texto: se
-    # um dia uma régua mudar, ela se separa sozinha.
-    reguas: dict[tuple[str, ...], list[str]] = {}
-    for metrica in pack.INDICADORES_QUALIDADE:
-        if texto := pack.texto_parametros(metrica):
-            reguas.setdefault(texto[1], []).append(pack.rotulo_curto(metrica))
-    for linhas, metricas in reguas.items():
-        st.markdown(
-            ui.parametros_em_linha(" · ".join(metricas), linhas),
-            unsafe_allow_html=True,
-        )
+    # A régua destes quatro já vai ao lado dos gráficos deles, na seção de
+    # tópicos. Repeti-la aqui, embaixo de cards que já dizem "Regular", era
+    # meia tela de texto dizendo o que o card diz — saiu em 02/out/2026, a
+    # pedido da equipe parceira.
 
     # Coorte aberta: dizer **por que** três dos quatro estão vazios. Sem
     # isto o card em branco parece defeito, e o número que estava ali antes
@@ -898,7 +883,6 @@ with resiliencia.painel("Indicadores de qualidade"), st.container(
             f"Esses indicadores se preenchem ao longo do acompanhamento; o "
             f"boletim os publica até o último ano de coorte fechada."
         )
-    st.caption(pack.FONTE_PARAMETROS)
 
 
 # ---------------------------------------------------------------------------
@@ -1007,7 +991,7 @@ def _desenhar_indicador(chave: str, serie: pd.DataFrame) -> None:
             # Duas caixas, como no boletim: as réguas são diferentes, e a do
             # abandono corre ao contrário — lá, "Bom" é o valor **baixo**.
             _quadro("cura_pct")
-            _quadro("abandono_pct", fonte=True)
+            _quadro("abandono_pct")
         return
 
     titulo, ajuda, metrica, tipo = {
@@ -1054,7 +1038,7 @@ def _desenhar_indicador(chave: str, serie: pd.DataFrame) -> None:
             altura=260, key=f"indicador-{chave}",
         )
     with calha:
-        _quadro(metrica, fonte=chave == "contatos_pct")
+        _quadro(metrica)
         if chave == "gif_avaliado_pct":
             # O Gráfico 11 tem **duas** séries: avaliado no diagnóstico e na
             # cura. A segunda exige cruzar o grau com o desfecho caso a caso,
@@ -1166,7 +1150,7 @@ with resiliencia.painel("Séries anuais"), st.container(border=True, key="cartao
     with calha_014:
         # Este tem régua: é o Gráfico 2 do boletim, e é só ela que a calha
         # carrega — a legenda das séries ficou embaixo do gráfico, como lá.
-        _quadro("taxa_det_0_14", fonte=True)
+        _quadro("taxa_det_0_14")
 
 
 st.caption(

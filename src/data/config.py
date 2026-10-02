@@ -117,6 +117,12 @@ def _canon(doenca: str) -> str:
 #: declara a própria cobertura, que é onde isso pertence.
 ANO_MAX = 2025
 
+#: O ano em que o painel abre. **Não** é o último: em 2025 a coorte ainda não
+#: fechou, e cura, abandono e contatos aparecem vazios — quem abre o painel vê
+#: três cards em branco antes de ler o porquê. 2024 é o último ano completo, e
+#: é o que o boletim publica. 2025 continua selecionável.
+ANO_PADRAO = 2024
+
 #: Zika só tem registro a partir de 2016.
 
 

@@ -1,5 +1,5 @@
 {
-  "_fonte": "Boletim Epidemiológico de Hanseníase — SES-PE/SEVSAP, Anual 2025. Dados tabulados em 16/04/2025, sujeitos a alteração. PDF em REUNIAO ALINHAMENTO PERNAMBUCO/BOLETIM_EPIDEMIOLOGICO_HANSEN_2025.pdf; parâmetros conferidos na reunião de 22/set/2026.",
+  "_fonte": "Boletim Epidemiológico de Hanseníase — SES-PE/SEVSAP, Anual 2025. Dados tabulados em 16/04/2025, sujeitos a alteração. PDF em REUNIAO ALINHAMENTO PERNAMBUCO/BOLETIM_EPIDEMIOLOGICO_HANSEN_2025.pdf; parâmetros conferidos na reunião de 22/set/2026. Em 02/out/2026 a equipe parceira corrigiu 'Regular ≥ 75 a 89,9%' para 'Regular 75 a 89,9%': o '≥' antes de uma faixa fechada está no PDF, mas não faz sentido — é erro do documento, não da transcrição.",
   "_leitura": "Nossa extração é posterior à tabulação deles e o SINAN só cresce: ficar ACIMA é o esperado, ficar abaixo não tem explicação benigna. Ver docs/paridade-hanseniase.md §10.",
   "parametros": {
     "incid": {
@@ -87,7 +87,7 @@
       "quadro": [
         "% Cura",
         "Bom ≥ 90%",
-        "Regular ≥ 75 a 89,9%",
+        "Regular 75 a 89,9%",
         "Precário < 75%"
       ]
     },
@@ -107,7 +107,7 @@
       "quadro": [
         "% Contatos examinados",
         "Bom ≥ 90%",
-        "Regular ≥ 75 a 89,9%",
+        "Regular 75 a 89,9%",
         "Precário < 75%"
       ]
     },
@@ -127,7 +127,7 @@
       "quadro": [
         "% Grau de incapacidade",
         "Bom ≥ 90%",
-        "Regular ≥ 75 a 89,9%",
+        "Regular 75 a 89,9%",
         "Precário < 75%"
       ]
     },

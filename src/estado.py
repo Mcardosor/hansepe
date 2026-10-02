@@ -44,7 +44,7 @@ class Navegacao:
     """Recorte corrente. Mutável — a aplicação guarda uma instância viva."""
 
     doenca: str = config.HANSENIASE
-    ano: int = config.ANO_MAX
+    ano: int = config.ANO_PADRAO
     metrica: str = "incid"
 
     nivel: str = "UF"
@@ -222,7 +222,7 @@ class Navegacao:
         self.macro = None
         self.micro = None
         if not manter_ano:
-            self.ano = config.ANO_MAX
+            self.ano = config.ANO_PADRAO
 
     # -- exibição -----------------------------------------------------------
 
