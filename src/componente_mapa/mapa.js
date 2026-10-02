@@ -41,42 +41,7 @@
       const v = props[k] !== undefined ? props[k] : info.object[k];
       return v === undefined || v === null ? "" : String(v);
     });
-    requestAnimationFrame(encaixarTooltip);
     return { html, style: tooltipSpec.style || {} };
-  }
-
-  // O deck põe o balão no ponteiro e pronto; perto da borda ele sai do
-  // iframe, e o `overflow:hidden` do body corta o que passou — foi o que a
-  // equipe viu em Fernando de Noronha, que fica no canto superior direito.
-  //
-  // O ajuste é feito depois de o deck escrever `left`/`top`, e com a caixa
-  // **medida**: o balão muda de altura com o número de linhas de detalhe, e
-  // estimar o tamanho pelo texto erraria justamente nos maiores, que são os
-  // que estouram. Vira para o lado que couber; se não couber de nenhum, encosta
-  // na borda em vez de sumir.
-  const AFASTAMENTO = 12;  // respiro entre o ponteiro e o balão
-  const MARGEM = 8;        // respiro entre o balão e a borda do mapa
-
-  function encaixarTooltip() {
-    const balao = document.querySelector(".deck-tooltip");
-    const caixa = document.getElementById("mapa");
-    if (!balao || !caixa || balao.style.display === "none") return;
-
-    const largura = balao.offsetWidth;
-    const altura = balao.offsetHeight;
-    if (!largura || !altura) return;
-
-    const x0 = balao.offsetLeft;
-    const y0 = balao.offsetTop;
-    let dx = AFASTAMENTO;
-    let dy = AFASTAMENTO;
-
-    if (x0 + dx + largura > caixa.clientWidth - MARGEM) dx = -AFASTAMENTO - largura;
-    if (y0 + dy + altura > caixa.clientHeight - MARGEM) dy = -AFASTAMENTO - altura;
-    if (x0 + dx < MARGEM) dx = MARGEM - x0;
-    if (y0 + dy < MARGEM) dy = MARGEM - y0;
-
-    balao.style.transform = "translate(" + dx + "px, " + dy + "px)";
   }
 
   function aoClicar(info) {

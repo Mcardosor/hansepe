@@ -99,15 +99,17 @@ def test_o_css_do_tooltip_mira_a_classe_que_o_deck_cria() -> None:
     assert "\n  .tooltip {" not in html, "a regra morta voltou"
 
 
-def test_o_tooltip_e_reposicionado_depois_de_medido() -> None:
-    """Virar o balão para o lado que couber exige medir a caixa renderizada.
+def test_o_tooltip_fica_a_esquerda_do_ponteiro() -> None:
+    """Posição fixa, não calculada.
 
-    O balão muda de altura com o número de linhas de detalhe; estimar o
-    tamanho pelo texto erraria justamente nos maiores, que são os que
-    estouram. Daí `offsetWidth`/`offsetHeight` num quadro posterior ao que o
-    deck usa para escrever `left`/`top`.
+    A primeira tentativa mediu a caixa renderizada e virava o balão para o
+    lado que coubesse. Piscava: a medida só existe depois que o deck escreve
+    a posição, então o balão aparecia num lugar e saltava para outro a cada
+    movimento do mouse. Posição fixa não depende de medir, e por isso não
+    pisca — foi a solução pedida pela equipe em 02/out/2026.
     """
+    html = (mapa_componente.DIRETORIO / "index.html").read_text(encoding="utf-8")
+    assert "translate(calc(-100% - 14px), 12px)" in html
+
     js = (mapa_componente.DIRETORIO / "mapa.js").read_text(encoding="utf-8")
-    assert "encaixarTooltip" in js
-    assert "requestAnimationFrame(encaixarTooltip)" in js
-    assert "offsetWidth" in js and "offsetHeight" in js
+    assert "requestAnimationFrame" not in js, "o reposicionamento que piscava voltou"

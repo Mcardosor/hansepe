@@ -21,13 +21,23 @@
   }
   .zoom button:hover { background: #f2f2f2; }
   .zoom button:active { background: #e6e6e6; }
-  /* O deck nomeia o elemento `deck-tooltip`. Até 02/out/2026 esta regra
-     dizia `.tooltip` e não pegava nada: sem largura máxima, o balão crescia
-     até onde o texto quisesse e o `overflow:hidden` do body cortava o resto
-     perto da borda. O deslocamento em relação ao ponteiro é decidido no
-     `mapa.js`, que mede a caixa e vira o balão para o lado que couber. */
+  /* O balão fica sempre à **esquerda** do ponteiro.
+
+     O deck o põe à direita e pronto, e aí ele saía pela borda do iframe, que
+     tem `overflow:hidden` — em Fernando de Noronha, no canto superior
+     direito, sobrava metade do texto.
+
+     Tentei primeiro medir a caixa e virar para o lado que coubesse. Ficou
+     pior: a medida só existe depois que o deck escreve a posição, então o
+     balão aparecia num lugar e pulava para outro a cada movimento do mouse —
+     piscava. Posição fixa não pisca porque não depende de medir nada.
+
+     A regra dizia `.tooltip` até 02/out/2026, e o deck nomeia o elemento
+     `deck-tooltip`: não casava com nada, e era por isso que o balão nem
+     largura máxima tinha. */
   .deck-tooltip {
     position: absolute; z-index: 3; pointer-events: none;
+    transform: translate(calc(-100% - 14px), 12px);
     max-width: 280px;
   }
 </style>
@@ -41,6 +51,6 @@
 </div>
 <script src="deck.min.js?v=ea54e246"></script>
 <script src="deck-json.min.js?v=d55dc91a"></script>
-<script src="mapa.js?v=1139c9ce"></script>
+<script src="mapa.js?v=93fc160c"></script>
 </body>
 </html>
