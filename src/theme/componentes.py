@@ -364,6 +364,21 @@ def css_layout() -> str:
   [data-stale] {{ transition: none; }}
 }}
 
+/* Bloco de CSS injetado não ocupa espaço.
+
+   Cada `st.markdown("<style>…")` vira um `stElementContainer` de altura zero,
+   mas o `stVerticalBlock` é flex com `gap`: cada bloco invisível custa 16px.
+   São três antes do título — 48px de nada entre o topo da página e o cartão
+   do cabeçalho, que foi o que a equipe viu como "espaço em branco".
+
+   O seletor exige que o `<style>` seja **filho único** do container de
+   markdown: assim pega bloco de CSS puro e deixa em paz um markdown que
+   tenha conteúdo visível junto. O `<style>` continua valendo escondido —
+   CSS não depende de o elemento estar visível. */
+[data-testid="stElementContainer"]:has([data-testid="stMarkdownContainer"] > style:only-child) {{
+  display: none;
+}}
+
 /* Respiro da página. O padrão do Streamlit é `96px 80px 160px`, medida de
    página de documento: 144px de nada antes do título e 160px depois do último
    gráfico, num painel aberto para ler número. Os 80px laterais ainda custavam

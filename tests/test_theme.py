@@ -184,3 +184,21 @@ def test_sufixo_curto_nao_e_fatorado() -> None:
 
     original = ("Bom ≥ 90%", "Regular ≥ 75 a 89,9%", "Precário < 75%")
     assert _fatorar_unidade("% Cura", original) == ("% Cura", original)
+
+
+def test_bloco_de_css_injetado_nao_ocupa_espaco() -> None:
+    """Os `st.markdown("<style>…")` não podem custar espaçamento.
+
+    Cada um vira um `stElementContainer` de altura zero, mas o bloco vertical
+    do Streamlit é flex com `gap`: três blocos de CSS antes do título custavam
+    48px de branco acima do cabeçalho — foi o que a equipe viu na tela em
+    02/out/2026, medido no painel em produção.
+
+    A regra exige `style:only-child`: um markdown com conteúdo visível junto
+    do `<style>` continua aparecendo. Se alguém trocar o seletor por um mais
+    frouxo, o conteúdo some sem aviso.
+    """
+    css = c.css_base() + c.css_layout()
+    assert 'style:only-child' in css, (
+        "a regra que recolhe os blocos de CSS injetado sumiu do tema"
+    )
