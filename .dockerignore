@@ -13,6 +13,9 @@ __pycache__/
 # Nada disso roda em produção.
 tests/
 scripts/
+# Exceto este, que roda **durante** o build para injetar as meta tags no HTML
+# do Streamlit. Sem a exceção o `COPY` não acha o arquivo e o build quebra.
+!scripts/preparar_metatags.py
 docs/
 .pytest_cache/
 
