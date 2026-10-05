@@ -14,7 +14,7 @@ from __future__ import annotations
 #: Um raio só para toda superfície. Eram dois — 18px nos cartões de KPI e nos
 #: indicadores de qualidade, 14px no resto —, e lado a lado na mesma tela a
 #: diferença aparecia como descuido, não como hierarquia. Unificados em
-#: 05/out/2026. O alias `RAIO_CARD` fica porque três regras o citam.
+#: O alias `RAIO_CARD` fica porque três regras o citam.
 RAIO_PAINEL = "14px"
 RAIO_CARD = RAIO_PAINEL
 RAIO_PILL = "999px"

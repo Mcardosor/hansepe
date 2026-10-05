@@ -16,7 +16,7 @@ eles publicam, não de documentação: com **três** anos de referência, de 202
 janeiro, no sexto decimal. `tests/test_canal.py` mantém essa conferência
 fixada em três, porque ela é a prova de que entendemos o método.
 
-**Mas o padrão aqui é cinco**, por decisão de 28/ago/2026. Três é o que o
+**Mas o padrão aqui é cinco.** Três é o que o
 painel de origem usa, e é pouco: com três pontos por mês cada quartil cai
 entre dois valores, e a faixa oscila com qualquer ano atípico. Com três anos,
 2020 — o mínimo da série, deprimido pela pandemia — pesa um terço da faixa.

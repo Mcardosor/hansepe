@@ -69,7 +69,7 @@ def regioes(uf: str = "PE", nivel: str = "macro") -> gpd.GeoDataFrame:
 
 # Houve aqui um `centroides()`, que lia
 # `_geo_cache/municipios_centroids.parquet` e nunca foi chamado por nenhum
-# caminho de produção — só pelo próprio teste. Saiu em 14/ago/2026, junto com o
+# caminho de produção, só pelo próprio teste. Saiu junto com o
 # arquivo no pacote de publicação, pelo mesmo motivo que o dataset `obitos`
 # saiu de `preparar_publicacao.DATASETS`: dado morto que ia para o servidor.
 #

@@ -8,7 +8,7 @@ Documento para envio à equipe responsável pela extração.
 | Destinatário | equipe parceira responsável pela extração do SINAN |
 | Versão | 1.1 |
 | Última revisão | outubro de 2026 |
-| Responsável técnico | *(preencher)* |
+| Responsável técnico | Matheus Cardoso |
 
 ---
 

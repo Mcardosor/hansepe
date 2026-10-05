@@ -8,7 +8,7 @@ Documento de referência para leitura dos indicadores.
 | Destinatário | Secretaria Estadual de Saúde de Pernambuco |
 | Versão | 1.0 |
 | Última revisão | outubro de 2026 |
-| Responsável técnico | *(preencher)* |
+| Responsável técnico | Matheus Cardoso |
 
 ---
 

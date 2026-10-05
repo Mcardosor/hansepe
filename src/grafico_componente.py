@@ -10,7 +10,7 @@ Cada gráfico é uma função que devolve a **opção** ECharts (um dict), e o
 `app.py` a entrega a :func:`desenhar`. As constantes de layout que o
 `app.py` usa para dimensionar os iframes ficam no fim do módulo.
 
-O `graficos.py` Altair, que era o desenho original, saiu em 21/set/2026
+O `graficos.py` Altair, que era o desenho original, saiu do projeto
 depois que os três painéis (tbpe, hansepe, RecifeTB) migraram — as
 decisões de cada gráfico estão nas docstrings daqui.
 
@@ -111,7 +111,7 @@ def _base() -> dict:
 #: Texto escrito **dentro** de uma barra: claro ou escuro, o que for legível
 #: sobre aquela cor. O boletim escreve o N em branco, e em cima do roxo isso
 #: dá 7,45:1; em cima do laranja cai para 3,10:1, abaixo do mínimo de 4,5:1
-#: da WCAG para 12px. Medido em 05/out/2026.
+#: da WCAG para 12px.
 _CLARO, _ESCURO = "#FFFFFF", "#111827"
 
 
@@ -238,7 +238,7 @@ def composicao(
     """
     opt = _base()
     # `rotulo` vazio deixa o gráfico sem título próprio: desde que cada tópico
-    # ganhou linha inteira e título de seção (28/set/2026), escrever o nome da
+    # ganhou linha inteira e título de seção, escrever o nome da
     # variável duas vezes, uma sobre a outra, era só ruído.
     if rotulo:
         opt["title"] = {
@@ -387,7 +387,7 @@ SERIE_ATUAL = "Ano selecionado"
 #: A rampa os ordena bem — mais antigo mais claro —, mas não os identifica:
 #: anos vizinhos ficam em ΔE 6,4 a 8,4 **em todas as visões, inclusive a
 #: normal**, e abrir a rampa não resolve (três alternativas testadas em
-#: 05/out/2026, a melhor chega a 10,2). São cinco degraus numa escala
+#: a melhor chega a 10,2). São cinco degraus numa escala
 #: sequencial: não cabem. A legenda prometia escolher um ano pela cor e não
 #: entregava. O ano continua nomeado no tooltip, que é onde a identificação
 #: funciona — por texto, não por cor.

@@ -184,7 +184,7 @@ def css_base() -> str:
    sobre o branco e o vermelho 2,85:1 sobre o fundo escuro, contra o mínimo
    de 4,5:1 — são 12px em peso 800, longe da faixa de texto grande. Com a
    mistura ficam 6,76 e 5,38 no pior caso de cada uma, e verde e vermelho
-   continuam distinguíveis entre si. Medido em 05/out/2026. */
+   continuam distinguíveis entre si. */
 .kpi-bom  {{ color: color-mix(in srgb, {tokens.BOM} 60%, currentColor); }}
 .kpi-ruim {{ color: color-mix(in srgb, {tokens.RUIM} 60%, currentColor); }}
 .kpi-igual {{ opacity: {tokens.NEUTRO_OPACIDADE}; }}
@@ -194,7 +194,7 @@ def css_base() -> str:
    Mapa (deck.gl) e gráficos (ECharts) são iframes com instância viva, e a
    transição entre dois estados acontece lá dentro — voo da câmera, cor
    interpolando, barra deslizando. O fade de entrada dos gráficos Vega e a
-   tentativa de animar o mapa por CSS saíram junto com o Altair (21/set/2026);
+   tentativa de animar o mapa por CSS saíram junto com o Altair;
    o histórico do que foi tentado está em `../tbpe/docs/mapa-clique.md`.
 
    `prefers-reduced-motion` é respeitado nos dois lugares: aqui, no card de
@@ -777,7 +777,7 @@ def css_layout() -> str:
    coluna a margem não separa nada, e atrapalha. Numa linha alinhada pela
    base (`vertical_alignment="bottom"`), ela entra na conta da altura e
    desencontra os controles — era o que punha o rádio "Meses do ano" 14px
-   abaixo do seletor de grau, ao lado dele. Medido na tela em 05/out/2026. */
+   abaixo do seletor de grau, ao lado dele. */
 [data-testid="stVerticalBlock"] > [data-testid="stElementContainer"]:not(:last-child):has([data-testid="stButtonGroup"]),
 [data-testid="stVerticalBlock"] > [data-testid="stElementContainer"]:not(:last-child):has([data-testid="stSelectbox"]) {{
   margin-bottom: 14px;
@@ -789,7 +789,7 @@ def css_layout() -> str:
    o controle para baixo: na faixa de controles, os seletores (rótulo sem
    ícone) começavam em y=363 e as pílulas (rótulo com ícone) em y=368. Cinco
    pixels numa régua de cinco colunas é o bastante para a linha parecer
-   torta. Medido na tela em 05/out/2026. */
+   torta. */
 [data-testid="stWidgetLabel"] [data-testid="stTooltipIcon"] {{
   height: 1.6em;
   align-items: center;
@@ -881,7 +881,7 @@ def css_layout() -> str:
      institucional: no tema claro dá 9,97:1 sobre a pílula, mas no escuro cai
      para 1,49:1, contra o mínimo de 4,5:1 da WCAG para texto de 14px em
      negrito. Misturado, fica 12,79:1 no claro e 5,44:1 no escuro. Medido em
-     05/out/2026; a conta está em `tests/test_theme.py`. */
+     A conta está em `tests/test_theme.py`. */
   color: color-mix(in srgb, var(--intro-accent, #12346B) 50%, currentColor);
   font-weight: 700;
   font-size: {tokens.TEXTO_XS};
@@ -1127,7 +1127,7 @@ def titulo_legenda(titulo: str, unidade: str = "") -> str:
 def cores_das_faixas(chave: str, cores: list[str]) -> str:
     """CSS que põe o quadradinho de cor em cada botão da legenda clicável.
 
-    A legenda do mapa virou um `st.pills` em 28/set/2026, para que clicar numa
+    A legenda do mapa virou um `st.pills`, para que clicar numa
     faixa realce os municípios dela. O Streamlit desenha os botões, e a cor —
     que é metade do que uma legenda diz — entra por aqui: um `::before` por
     posição, na ordem em que as faixas foram passadas ao widget.
@@ -1175,7 +1175,7 @@ def quadro_parametros(titulo: str, linhas, fonte: str = "") -> str:
     """Quadro de parâmetros ao lado do gráfico, como no boletim estadual.
 
     O boletim põe uma caixinha à direita de cada gráfico dizendo em que faixa
-    o indicador cai — é o que a equipe pediu em 22/set/2026, e o que permite
+    o indicador cai — é o que a equipe pediu, e o que permite
     ler o gráfico sem decorar a régua. O texto é **citação**: vem de
     `doencas.hanseniase.TEXTO_PARAMETROS`, não é gerado dos cortes; aqui só
     a unidade repetida sobe para o título.

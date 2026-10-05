@@ -283,7 +283,7 @@ _COLUNA_0_14 = {
 
 #: Razões que saem de duas colunas do próprio `incidence`, sem outra fonte.
 #:
-#: `cura_pct` morava aqui, como `casos_cura / casos_total`. Saiu em 21/ago/2026
+#: `cura_pct` morava aqui, como `casos_cura / casos_total`. Saiu daqui
 #: quando o card passou a usar o denominador do Ministério — ver
 #: :data:`_RAZAO_EM_DESFECHO`. O dicionário fica, vazio, porque o caminho que
 #: ele serve continua válido para a próxima razão que nascer no `incidence`.
@@ -583,7 +583,7 @@ FAIXAS = (
 #: `piramides` traz CURA zerada para tuberculose — o dado existe na fonte,
 #: mas some no pipeline. Ver docs/perguntas-equipe-r.md.
 #:
-#: Óbito saiu em 02/out/2026 junto com o resto do SIM: a hanseníase não
+#: Óbito saiu junto com o resto do SIM. A hanseníase não
 #: mostra óbito em lugar nenhum do painel.
 #:
 #: Cura não tem: `incidence` quebra por sexo mas não por idade, e

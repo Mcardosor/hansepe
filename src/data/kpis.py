@@ -48,7 +48,7 @@ class Kpis:
     #: `interrupcao_trat_pct` sob a regra `boletim`.
     #:
     #: Era sobre os casos novos do ano, e dava 57,15% no Brasil em 2024 contra
-    #: 65,1% agora. Trocou em 21/ago/2026: com o empilhado de desfechos na
+    #: 65,1% agora. Trocou porque, com o empilhado de desfechos na
     #: evolução, a tela passou a ter dois números de cura para o mesmo ano,
     #: oito pontos apart e ambos rotulados "cura".
     #:
@@ -108,7 +108,7 @@ def calcular(esc: Escopo) -> Kpis:
         # Casos novos pela definição do Ministério (`MODOENTR = 1`). O
         # `casos_total` da extração é toda entrada no registro ativo —
         # recidiva e transferência inclusive — e é o que o painel de origem
-        # mostra. Decisão de 20/set/2026: docs/paridade-hanseniase.md §1.
+        # mostra. Ver docs/paridade-hanseniase.md §1.
         casos = leitura.casos_novos_ms(esc)
     cura = inc.get("casos_cura")
     pop = inc.get("pop_total")

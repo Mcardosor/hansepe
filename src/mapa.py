@@ -111,7 +111,7 @@ def escala_natural(
     """Divide os valores em classes por **quebras naturais**.
 
     Era por quantis, classes de igual frequencia, herdado do painel em R.
-    Trocou em 24/ago/2026 porque a incidencia tem cauda longa e o quantil
+    Trocou porque a incidencia tem cauda longa e o quantil
     comprime justamente o topo, que e onde a vigilancia olha: em Pernambuco,
     **29 municipios dividiam a mesma cor cobrindo de 59 a 445 por 100 mil** --
     Itapissuma e Goiana pintados iguais com seis vezes de diferenca.
@@ -697,7 +697,7 @@ def enquadrar(
 
 #: Cinza de quem **não** está na faixa clicada na legenda.
 #:
-#: A primeira versão, de 28/set/2026, baixava a opacidade dos outros para 34 e
+#: A primeira versão baixava a opacidade dos outros para 34 e
 #: mantinha a cor de cada um. Funcionava para "Hiperendêmico" e falhava
 #: justamente para "Baixo": a faixa mais baixa é o lilás mais claro da rampa,
 #: e contra 145 municípios em lilás desbotado ela não se distinguia de nada —
@@ -721,7 +721,7 @@ CONTORNO_APAGADO = [205, 208, 214, 180]
 #:
 #: O preenchimento sozinho não separa "sem dado" da faixa mais baixa: o cinza
 #: #F3F4F6 contra o lilás #DCD3FA dá ΔE 6,1 na tritanopia. E não é questão de
-#: escolher outro cinza — foram testados oito em 05/out/2026: os claros
+#: escolher outro cinza: foram testados oito, e os claros
 #: colidem com o lilás, os escuros colidem com uma faixa do meio da rampa
 #: (#6B7280 dá ΔE 3,1 contra ela). Qualquer cor move o problema de lugar,
 #: porque a rampa já ocupa o eixo de luminosidade inteiro.

@@ -10,7 +10,7 @@ espaço LMS, colapsa o eixo do cone ausente e volta. É o que o Color Oracle
 usa. Distância em CIEDE2000, que aproxima a percepção melhor que a
 diferença euclidiana em RGB.
 
-Escrito em 05/out/2026, junto com o exame das séries do painel.
+Escrito junto com o exame das séries do painel.
 """
 import math
 

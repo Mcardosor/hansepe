@@ -295,7 +295,7 @@ def _ao_clicar_na_legenda() -> None:
 
     A legenda fica embaixo do mapa que ela comanda. Lido no ponto do widget,
     o clique só chegaria ao mapa no rerun seguinte — é o mesmo tropeço dos
-    cards acima do seletor de métrica, em 21/set/2026. Clicar na faixa já
+    cards acima do seletor de métrica. Clicar na faixa já
     marcada desmarca, e o mapa volta inteiro.
     """
     st.session_state["faixa_realcada"] = st.session_state.get("faixa_legenda")
@@ -352,7 +352,7 @@ def _quadro(metrica: str) -> None:
     """O quadro de parâmetros do boletim, quando a métrica tem um.
 
     Vai ao lado do gráfico, como no documento: foi o pedido da reunião de
-    22/set/2026 — a régua precisa estar junto do número, não só na legenda
+     — a régua precisa estar junto do número, não só na legenda
     do mapa.
     """
     if texto := pack.texto_parametros(metrica):
@@ -365,7 +365,7 @@ def _quadro(metrica: str) -> None:
 
 #: Janelas de tempo oferecidas para as séries, em anos.
 #:
-#: Pedido da reunião de 28/set/2026. Não é só conforto visual: com 16 anos de
+#: Pedido da equipe parceira. Não é só conforto visual: com 16 anos de
 #: barras num gráfico de 500px cada uma some, e o boletim publica os
 #: indicadores em seis anos (2019–2024) e a detecção em dez (2015–2024). Dez é
 #: o padrão daqui pelo mesmo motivo — é o recorte do Gráfico 1.
@@ -399,7 +399,7 @@ def _recortar(dados: pd.DataFrame) -> pd.DataFrame:
 #: Proporção gráfico/calha. O boletim põe a caixa de parâmetros à direita de
 #: cada gráfico e é esse o padrão do Ministério; aqui ela vira uma calha de
 #: largura fixa, para que as seções empilhadas fiquem alinhadas na vertical
-#: como num documento — foi a decisão da reunião com a Rafaela, 28/set/2026.
+#: como num documento — foi a decisão tomada com a equipe parceira.
 CALHA = [7, 3]
 
 
@@ -448,7 +448,7 @@ def _card(metrica: str, atual, anterior) -> None:
         if num is not None and den:
             sub += f" • {ui.formatar_inteiro(num)} de {ui.formatar_inteiro(den)}"
     # A classificação do boletim ao lado do número — é o que transforma
-    # "67,1%" em "precário". Pedido da reunião de 22/set/2026.
+    # "67,1%" em "precário". Pedido da equipe parceira.
     if classe := pack.classe_de(metrica, valor):
         sub += f" • {classe}"
     st.markdown(
@@ -593,7 +593,7 @@ with esquerda:
             # em endemicidade é onde o número diz algo ("9 hiperendêmicos").
             contagem = mapa.classificar(serie_mapa, escala).value_counts()
 
-            # A legenda é clicável desde 28/set/2026 (pedido da reunião):
+            # A legenda é clicável (pedido da reunião):
             # clicar numa faixa apaga o resto do mapa, e clicar de novo
             # devolve. Ela é um `st.pills` e não mais HTML puro — os
             # quadradinhos de cor, que o widget não tem, entram por CSS.
@@ -747,7 +747,7 @@ with direita:
 
             # Os botões de janela ficam sobre o gráfico e alinhados à
             # direita, como num gráfico de cotação — foi o desenho pedido em
-            # 28/set/2026. Valem para todas as séries de tempo da página, e
+            #: Valem para todas as séries de tempo da página, e
             # não só para esta: é um controle só, no lugar em que ele é mais
             # óbvio de usar.
             titulo_epi, botoes_epi = st.columns([4, 6], vertical_alignment="center")
@@ -878,7 +878,7 @@ with resiliencia.painel("Indicadores de qualidade"), st.container(
 
     # A régua destes quatro já vai ao lado dos gráficos deles, na seção de
     # tópicos. Repeti-la aqui, embaixo de cards que já dizem "Regular", era
-    # meia tela de texto dizendo o que o card diz — saiu em 02/out/2026, a
+    # meia tela de texto dizendo o que o card diz. Saiu a
     # pedido da equipe parceira.
 
     # Coorte aberta: dizer **por que** três dos quatro estão vazios. Sem
@@ -966,7 +966,7 @@ def _desenhar_topico(variavel: str, rotulo: str) -> None:
 
 #: Os indicadores do programa que viram gráfico, e o rótulo no seletor.
 #:
-#: Entram no **mesmo** seletor das variáveis da ficha desde 29/set/2026:
+#: Entram no **mesmo** seletor das variáveis da ficha:
 #: estavam fixos dentro do cartão dos tópicos, e limpar o seletor deixava
 #: quatro gráficos órfãos numa caixa que dizia "escolha o que exibir".
 INDICADORES_EM_SERIE = {
@@ -1100,7 +1100,7 @@ with resiliencia.painel("Tópicos de interesse"), st.container(border=True, key=
 # ---------------------------------------------------------------------------
 
 with resiliencia.painel("Séries anuais"), st.container(border=True, key="cartao-series"):
-    # Um por linha desde 28/set/2026, e não mais lado a lado: com a calha da
+    # Um por linha, e não mais lado a lado: com a calha da
     # legenda ao lado, dois gráficos por linha deixariam cada um com um terço
     # da página. O boletim também dá uma linha inteira a cada gráfico.
     grafico_mb, calha_mb = _com_calha(
