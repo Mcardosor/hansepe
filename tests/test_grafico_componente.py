@@ -121,12 +121,25 @@ def test_canal_tem_faixa_muda_referencias_e_ano_por_cima() -> None:
     c = mod_canal.Canal(faixa=faixa, referencia=ref, atual=atual, anos=(2022, 2023))
     opt = gc.canal_endemico(c, rotulo="Incidência", cor="#92400E")
     ids = [s["id"] for s in opt["series"]]
-    assert ids == ["faixa-base", "faixa", "q1", "q3", "ref-2022", "ref-2023", "atual"]
+    assert ids == [
+        "faixa-base", "faixa", "q1", "q3", "ref-2022", "ref-2023",
+        "ref-grupo", "atual",
+    ]
     # A faixa é empilhada: base no Q1 e altura Q3 − Q1.
     assert opt["series"][0]["data"] == [1.0, 1.5]
     assert opt["series"][1]["data"] == [1.0, 1.0]
     # As duas séries mudas ficam fora da legenda e do tooltip.
-    assert opt["legend"]["data"] == ["Ano selecionado", "2022", "2023", "Q1", "Q3"]
+    #
+    # Os anos de referência entram como **uma** entrada: a rampa os ordena,
+    # mas não os identifica — anos vizinhos ficam em ΔE 6,4 a 8,4 em todas as
+    # visões, inclusive a normal. O ano continua nomeado no tooltip.
+    assert opt["legend"]["data"] == [
+        "Ano selecionado", "Anos anteriores", "Q1", "Q3",
+    ]
+    assert opt["legend"]["selectedMode"] is False
+    assert [s["name"] for s in opt["series"] if s["id"].startswith("ref-2")] == [
+        "2022", "2023",
+    ]
     assert set(opt["tooltip"]["ocultas"]) == {s["name"] for s in opt["series"][:2]}
     assert opt["series"][-1]["data"] == [2.4, 1.1]
     assert opt["xAxis"]["data"] == ["Jan", "Fev"]

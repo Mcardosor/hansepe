@@ -716,6 +716,26 @@ CONTORNO_REALCADO = [63, 51, 104, 235]
 #: molduras competindo com as 40 que interessam.
 CONTORNO_APAGADO = [205, 208, 214, 180]
 
+#: Contorno de quem **não tem dado**. Escuro, e sempre — independente de haver
+#: faixa escolhida.
+#:
+#: O preenchimento sozinho não separa "sem dado" da faixa mais baixa: o cinza
+#: #F3F4F6 contra o lilás #DCD3FA dá ΔE 6,1 na tritanopia. E não é questão de
+#: escolher outro cinza — foram testados oito em 05/out/2026: os claros
+#: colidem com o lilás, os escuros colidem com uma faixa do meio da rampa
+#: (#6B7280 dá ΔE 3,1 contra ela). Qualquer cor move o problema de lugar,
+#: porque a rampa já ocupa o eixo de luminosidade inteiro.
+#:
+#: O contorno resolve porque é outro canal: a diferença passa a ser traço
+#: escuro contra traço claro, que nenhum tipo de daltonismo apaga. Confundir
+#: "sem dado" com "detecção baixa" é ler um número que não existe.
+CONTORNO_SEM_DADO = [71, 78, 92, 255]
+
+#: Divisa comum: lilás acinzentado do meio da rampa, para contrastar com os
+#: dois extremos dela. Era literal na camada; virou constante quando o
+#: contorno passou a ser sempre por feição.
+CONTORNO_PADRAO = [124, 109, 168, 205]
+
 
 def _rgb(cor: str) -> list[int]:
     """`#RRGGBB` para `[r, g, b]`, que é como o deck.gl espera."""
@@ -977,15 +997,17 @@ def deck(
         if faixa_realcada in (None, c)
         else CINZA_APAGADO
     )
-    # Contorno por feição só quando há faixa escolhida: fora disso a camada
-    # usa uma cor de linha só, e mandar uma por município seria payload à toa.
-    dados["contorno"] = (
-        dados["classe"].map(
-            lambda c: CONTORNO_REALCADO if c == faixa_realcada else CONTORNO_APAGADO
-        )
-        if faixa_realcada is not None
-        else None
-    )
+    # Contorno sempre por feição: "sem dado" precisa do seu, haja ou não faixa
+    # escolhida. Antes era por feição só no realce, e a camada usava uma cor
+    # de linha única no resto do tempo.
+    def _contorno(classe: str) -> list[int]:
+        if classe == ROTULO_SEM_DADO:
+            return CONTORNO_SEM_DADO
+        if faixa_realcada is None:
+            return CONTORNO_PADRAO
+        return CONTORNO_REALCADO if classe == faixa_realcada else CONTORNO_APAGADO
+
+    dados["contorno"] = dados["classe"].map(_contorno)
     dados["exibicao"] = dados["valor"].map(
         lambda v: "—" if pd.isna(v) else _formatar(float(v), decimais)
     )
@@ -1073,12 +1095,9 @@ def deck(
         get_fill_color="properties.cor",
         # Divisa em lilás acinzentado, não em branco: o branco só desenhava
         # o município sobre os tons escuros, e nas classes claras a malha
-        # virava uma mancha só. Este tom fica no meio da rampa, então
+        # virava uma mancha só. `CONTORNO_PADRAO` fica no meio da rampa, então
         # contrasta com os dois extremos dela.
-        get_line_color=(
-            "properties.contorno" if faixa_realcada is not None
-            else [124, 109, 168, 205]
-        ),
+        get_line_color="properties.contorno",
         line_width_min_pixels=1.1 if faixa_realcada is not None else 0.8,
         stroked=True,
         filled=True,

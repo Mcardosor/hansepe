@@ -382,6 +382,16 @@ def composicao(
 #: borda cinza-azulada, anos de referência numa rampa fria do mais antigo ao
 #: mais recente, ano selecionado na cor da métrica.
 SERIE_ATUAL = "Ano selecionado"
+#: Uma entrada só para os cinco anos de referência.
+#:
+#: A rampa os ordena bem — mais antigo mais claro —, mas não os identifica:
+#: anos vizinhos ficam em ΔE 6,4 a 8,4 **em todas as visões, inclusive a
+#: normal**, e abrir a rampa não resolve (três alternativas testadas em
+#: 05/out/2026, a melhor chega a 10,2). São cinco degraus numa escala
+#: sequencial: não cabem. A legenda prometia escolher um ano pela cor e não
+#: entregava. O ano continua nomeado no tooltip, que é onde a identificação
+#: funciona — por texto, não por cor.
+SERIE_REFERENCIA = "Anos anteriores"
 SERIE_Q1 = "Q1"
 SERIE_Q3 = "Q3"
 COR_FAIXA = "#CBDCEF"
@@ -503,6 +513,15 @@ def canal_endemico(canal, *, rotulo: str, cor: str) -> dict:
                 "lineStyle": {"width": 1.3, "type": [4, 3], "color": tom},
                 "itemStyle": {"color": tom}, "z": 3,
             })
+    if anos:
+        # Série sem dado, só para a legenda ter uma entrada do grupo. O tom é
+        # o do meio da rampa, que representa o conjunto melhor que a ponta.
+        series.append({
+            "id": "ref-grupo", "name": SERIE_REFERENCIA, "type": "line", "data": [],
+            "symbol": "none",
+            "lineStyle": {"width": 1.3, "type": [4, 3], "color": rampa[len(rampa) // 2]},
+            "itemStyle": {"color": rampa[len(rampa) // 2]}, "silent": True,
+        })
     series.append({
         "id": "atual", "name": SERIE_ATUAL, "type": "line",
         "data": [_valor(v) for v in atual["valor"]],
@@ -510,12 +529,16 @@ def canal_endemico(canal, *, rotulo: str, cor: str) -> dict:
         "lineStyle": {"width": 2.8, "color": cor}, "itemStyle": {"color": cor}, "z": 5,
     })
 
-    legenda = [SERIE_ATUAL, *[str(a) for a in anos], SERIE_Q1, SERIE_Q3]
+    legenda = [SERIE_ATUAL, *([SERIE_REFERENCIA] if anos else []), SERIE_Q1, SERIE_Q3]
     opt.update({
         "grid": {"left": 56, "right": 16, "top": 40, "bottom": 32},
         "legend": {
             "data": legenda, "top": 0, "left": 0, "icon": "roundRect",
             "itemWidth": 14, "itemHeight": 3, "textStyle": {"fontSize": _FONTE_PX},
+            # Chave, não controle: "Anos anteriores" não tem série própria
+            # para ligar e desligar, e um clique que não faz nada é pior do
+            # que clique nenhum.
+            "selectedMode": False,
         },
         "xAxis": _eixo_categoria(meses),
         "yAxis": _eixo_valor(rotulo),
