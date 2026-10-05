@@ -835,12 +835,18 @@ def css_layout() -> str:
 [data-testid="stButtonGroup"] button[aria-checked="true"],
 [data-testid="stButtonGroup"] button[aria-pressed="true"] {{
   border-color: color-mix(in srgb, var(--intro-accent, #12346B) 55%, transparent) !important;
-  /* 7% e não 12%: no tema claro o fundo mais forte derrubava o texto para
-     4,33:1. Corrigir pelo fundo, e não pela cor do texto — quem pinta o
-     texto aqui é o Streamlit, com o primário **do tema**, enquanto
-     `--intro-accent` é fixo; sobrescrever trocava o laranja claro do tema
-     escuro pelo escuro, e o contraste caía para 2,30:1. */
-  background: color-mix(in srgb, var(--intro-accent, #12346B) 7%, transparent);
+  /* O preenchimento é tingido com `currentColor` — a própria cor do texto,
+     que o Streamlit pinta com o primário **do tema** — e não com
+     `--intro-accent`, que é fixo: tingir com o acento punha laranja sobre
+     azul claro, e sobrescrever a cor do texto derrubava o tema escuro para
+     2,30:1, trocando o laranja claro dele pelo escuro.
+
+     5% e não 12% porque a margem aqui é estreita por natureza: o laranja
+     #C1440A sobre branco puro já é só 5,12:1, então cada ponto de tinta sai
+     do contraste. Com 12% dava 4,33:1; com 5%, 4,77:1. Quem diz que a
+     pílula está selecionada é principalmente a borda, em 55% do acento —
+     o preenchimento só reforça. */
+  background: color-mix(in srgb, currentColor 5%, transparent) !important;
 }}
 
 /* O chip do multiselect é laranja com texto branco escolhido pelo Streamlit.
