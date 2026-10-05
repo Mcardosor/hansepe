@@ -1,5 +1,8 @@
 # Contrato de dados
 
+> **Documento interno.** Registro técnico para manutenção do código.
+> A documentação de uso está em `metodologia.md` e `requisitos.md`.
+
 > **Escopo:** este arquivo veio do painel nacional, que serve cinco doenças.
 > Em 29/set/2026 foi podado para o que **este** painel lê — saíram os datasets
 > de tuberculose e as armadilhas de `SITUA_ENCE`, campo que a ficha de

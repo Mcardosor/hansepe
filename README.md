@@ -1,80 +1,87 @@
 # Painel de Monitoramento da Hanseníase — Pernambuco
 
-Painel de vigilância da hanseníase do estado de Pernambuco, em Streamlit,
-com recorte por **município**, **região de saúde** e **macrorregião de
-saúde**. Reconstrução em Python do painel Shiny da equipe parceira, sobre o
-core da família Cenários+ (`../sinan`, `../RecifeTB`).
+Painel de vigilância epidemiológica da hanseníase em Pernambuco, com recorte
+por município, região de saúde e macrorregião de saúde. Desenvolvido em
+Python com Streamlit, a partir do painel Shiny mantido pela equipe parceira.
 
-## Conteúdo
+Disponível em <https://painel.cenarios.unb.br/cenarios/hansepe/>.
 
-- **Sete indicadores** do ano e território selecionados, com variação
-  contra o ano anterior: taxa de detecção geral e em menores de 15 anos,
-  casos novos (geral e 0–14), curas, proporção de multibacilares e de grau
-  II de incapacidade no diagnóstico.
-- **Mapa** clicável (município → região de saúde → macrorregião), com três
-  classificações de cor: quintis (como o painel de origem), quebras naturais
-  e a **escala de endemicidade do Ministério da Saúde**.
-- **Evolução temporal**: canal endêmico com filtro por grau de
-  incapacidade, série anual e epicurva mensal desde 2010.
-- **Ranking**, **pirâmide etária**, **tópicos de interesse** (16 variáveis
-  da ficha) e os gráficos anuais de classificação operacional e de casos
-  0–14.
+## O que o painel apresenta
 
-Tudo responde ao recorte: entrar numa macrorregião muda os sete cards e
-todos os gráficos, somando os municípios e recalculando as taxas.
+**Sete indicadores** do ano e do território selecionados, com a variação em
+relação ao ano anterior: taxa de detecção geral e em menores de 15 anos,
+casos novos (geral e na faixa de 0 a 14), curas, proporção de multibacilares
+e proporção de grau II de incapacidade no diagnóstico.
 
-Como cada número é calculado: [`docs/metodologia.md`](docs/metodologia.md).
-Onde difere do painel de origem e do MS:
+**Mapa navegável** por clique, do estado até o município, com três formas de
+classificar as cores: a escala de endemicidade do Ministério da Saúde, que é
+o padrão, quintis e quebras naturais.
+
+**Evolução temporal** em três vistas: canal endêmico com filtro por grau de
+incapacidade, série anual e epicurva mensal desde 2010.
+
+**Ranking de municípios, pirâmide etária e tópicos de interesse**, com
+dezesseis variáveis da ficha de notificação, além dos gráficos anuais de
+classificação operacional e de casos em menores de 15 anos.
+
+Todos os elementos respondem ao recorte selecionado. Ao entrar em uma
+macrorregião, os cartões e os gráficos são recalculados a partir da soma dos
+municípios que a compõem.
+
+A regra de cálculo de cada indicador está em
+[`docs/metodologia.md`](docs/metodologia.md). As diferenças em relação ao
+painel de origem e às definições do Ministério estão registradas em
 [`docs/paridade-hanseniase.md`](docs/paridade-hanseniase.md).
 
 ## Dados
 
-A extração agregada do SINAN da equipe parceira, **só a parte de
-hanseníase**: `incidence`, `incidence_0_14`, `sinan_landing`, `sinan_dict`,
-`_cache_ts`, `cases_new` e `piramides`, com as partições `doenca=HANS` e
-`doenca=HANSENIASE`, mais as malhas da SES-PE em `data/support/`. São 46 MB,
-e o painel não lê nada fora de `data/` — apagar aqui não afeta outro projeto.
-Nenhum dado nominal entra.
+O painel lê a extração agregada do SINAN mantida pela equipe parceira,
+restrita às partições de hanseníase, somada às malhas territoriais da
+SES-PE. São cerca de 47 MB em disco, e o painel não acessa nada fora da pasta
+`data/`. Nenhum dado nominal ou identificável entra.
 
-Os parquets não são versionados. Para montar a pasta a partir do lago do
+Os arquivos não são versionados. Para montar a pasta a partir do lago do
 painel nacional:
 
 ```bash
-python -m scripts.extrair_dados_hanseniase          # de ../sinan/data
+python -m scripts.extrair_dados_hanseniase
 python -m scripts.extrair_dados_hanseniase --origem ~/dashboard-sinan-pe/data
 ```
 
-É uma cópia: quando a extração do sinan for atualizada, rode de novo.
-`data/PROCEDENCIA.json` diz de onde veio e quando.
+O resultado é uma cópia independente: quando a extração de origem for
+atualizada, é preciso rodar o script novamente. O arquivo
+`data/PROCEDENCIA.json` registra a origem e a data da cópia em uso.
 
-## Como rodar
+## Como executar
 
 ```bash
 ../sinan/.venv/Scripts/python -m streamlit run app.py
 pytest
 ```
 
-Deploy na VM: [`docs/deploy.md`](docs/deploy.md) — porta 8510,
-`/cenarios/hansepe/`.
+As instruções de publicação na VM estão em
+[`docs/deploy.md`](docs/deploy.md).
 
-## Estrutura
+## Organização do código
 
 ```
 hansepe/
-├── app.py                  # composição da tela
+├── app.py                  composição da tela
 ├── src/
-│   ├── estado.py           # navegação PE → macro → região → município
-│   ├── mapa.py, mapa_componente.py, componente_mapa/      # deck.gl
-│   ├── grafico_componente.py, componente_grafico/         # ECharts
-│   ├── resiliencia.py
-│   ├── data/               # escopo, leitura, kpis, canal, recortes, geo
-│   ├── doencas/hanseniase.py
-│   └── theme/
-├── data/                   # extração só de hanseníase, 44 MB (não versionada)
-├── tests/                  # ~420 testes; tests/paridade contra a origem e o boletim
-├── docs/                   # metodologia, paridade, inventário, plano, deploy
-└── assets/                 # bandeira de PE e marca
+│   ├── estado.py           navegação estado → macro → região → município
+│   ├── mapa.py             mapa em deck.gl
+│   ├── grafico_componente.py   gráficos em ECharts
+│   ├── data/               leitura, indicadores, agregação, geografia
+│   ├── doencas/            definições específicas da hanseníase
+│   └── theme/              identidade visual e componentes
+├── data/                   extração de hanseníase (não versionada)
+├── tests/                  suíte automatizada, incluindo paridade
+├── docs/                   metodologia, paridade, operação
+└── assets/                 bandeira de Pernambuco e marca
 ```
 
-Fonte: SINAN/Ministério da Saúde; população IBGE. Hierarquia geográfica:
-Secretaria Estadual de Saúde de Pernambuco.
+---
+
+Fonte dos dados: SINAN, Ministério da Saúde. Estimativas populacionais:
+IBGE. Hierarquia de regiões e macrorregiões de saúde: Secretaria Estadual de
+Saúde de Pernambuco.

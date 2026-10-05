@@ -1,5 +1,8 @@
 # Performance
 
+> **Documento interno.** Registro técnico para manutenção do código.
+> A documentação de uso está em `metodologia.md` e `requisitos.md`.
+
 Medido em 29/set/2026, com hanseníase, no `data/` deste painel. Reproduzir com:
 
 ```bash

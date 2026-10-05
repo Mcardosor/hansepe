@@ -1,4 +1,15 @@
-# Requisitos e dados — Painel de Hanseníase de Pernambuco
+# Requisitos técnicos e origem dos dados
+
+**Painel de Monitoramento da Hanseníase — Pernambuco**
+
+| | |
+|---|---|
+| Destinatário | Secretaria Estadual de Saúde de Pernambuco |
+| Versão | 1.0 |
+| Última revisão | outubro de 2026 |
+| Responsável técnico | *(preencher)* |
+
+---
 
 ## Requisitos de máquina
 
@@ -30,7 +41,7 @@ Medido no container em produção, com o painel no ar.
 
 Na prática o container ocupa **46 MB de memória** e fica em 0,4% de CPU
 atendendo. O limite de 1,5 GB existe como folga para picos, não porque ele
-precise. Do disco, 260 MB são a imagem Docker e 48 MB são os dados.
+precise. Do disco, 260 MB são a imagem Docker e 47 MB são os dados.
 
 O painel responde em milissegundos porque tudo está em disco local: não há
 espera de rede nem de banco.
@@ -47,7 +58,7 @@ espera de rede nem de banco.
 ```bash
 pip install -r requirements.txt
 streamlit run app.py     # abre em http://localhost:8501
-pytest                   # 421 testes, cerca de 25 segundos
+pytest                   # 438 testes, cerca de 45 segundos
 ```
 
 GeoPandas, Shapely e TopoJSON aparecem na lista de bibliotecas, mas só são
@@ -109,7 +120,7 @@ O caminho é este:
 1. A equipe parceira publica a extração agregada do SINAN.
 2. Ela entra no acervo do painel nacional, que tem todas as doenças e pesa
    cerca de 240 MB.
-3. Um script copia de lá só a parte de hanseníase — 48 MB — para a pasta
+3. Um script copia de lá só a parte de hanseníase, cerca de 47 MB, para a pasta
    `data/` deste projeto.
 
 ```bash

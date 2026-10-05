@@ -1,5 +1,8 @@
 # Inventário do painel de origem — Hanseníase de PE (Shiny)
 
+> **Documento interno.** Registro técnico para manutenção do código.
+> A documentação de uso está em `metodologia.md` e `requisitos.md`.
+
 Levantado em 18/set/2026 em <https://cenarios.unb.br/pernambuco-hans/>, que embute
 `https://cenariostb.unb.br/PE_HANSE_06_01/` (Shiny, Leaflet + ECharts). É o
 painel que o `hansepe` reconstrói em Python, tela a tela — o equivalente do

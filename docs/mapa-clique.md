@@ -1,5 +1,8 @@
 # Drill-down por clique no mapa — investigação
 
+> **Documento interno.** Registro técnico para manutenção do código.
+> A documentação de uso está em `metodologia.md` e `requisitos.md`.
+
 O item 3.2 do cronograma pede navegação `BR → UF → município` por clique no
 mapa. Este documento registra o que já foi descartado, para a próxima
 tentativa não repetir o caminho.
