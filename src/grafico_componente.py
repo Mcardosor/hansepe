@@ -32,6 +32,7 @@ import pandas as pd
 import streamlit.components.v1 as components
 
 from .theme import componentes as ui
+from .theme import cores as paleta
 from .theme import tokens
 
 DIRETORIO = Path(__file__).resolve().parent / "componente_grafico"
@@ -105,6 +106,20 @@ def _base() -> dict:
             "textStyle": {"color": "#fff", "fontSize": _FONTE_PX},
         },
     }
+
+
+#: Texto escrito **dentro** de uma barra: claro ou escuro, o que for legível
+#: sobre aquela cor. O boletim escreve o N em branco, e em cima do roxo isso
+#: dá 7,45:1; em cima do laranja cai para 3,10:1, abaixo do mínimo de 4,5:1
+#: da WCAG para 12px. Medido em 05/out/2026.
+_CLARO, _ESCURO = "#FFFFFF", "#111827"
+
+
+def cor_sobre(fundo: str) -> str:
+    """A cor de texto mais legível sobre ``fundo``."""
+    if paleta.contraste(_CLARO, fundo) >= paleta.contraste(_ESCURO, fundo):
+        return _CLARO
+    return _ESCURO
 
 
 def ranking(
@@ -880,7 +895,8 @@ def barras_empilhadas_com_linha(
             # linha, que passa por ali.
             **({"label": {
                 "show": True, "position": "insideBottom", "distance": 6,
-                "color": "#FFFFFF", "fontSize": _FONTE_PX, "casas": 0,
+                "color": cor_sobre(cores[coluna]), "fontSize": _FONTE_PX,
+                "casas": 0,
             }} if rotulos else {}),
         })
     # Só a última fatia da pilha leva o canto arredondado, senão cada fatia

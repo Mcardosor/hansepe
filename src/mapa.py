@@ -1119,7 +1119,17 @@ def deck(
                 get_position="posicao",
                 get_text="texto",
                 get_size=10,
-                get_color=[110, 110, 110, 230],
+                # Escuro sobre uma lapela branca, como os rótulos de valor —
+                # e pelo mesmo motivo. O cinza médio de antes dava 4,17:1 no
+                # tema claro e 3,21:1 no escuro, contra o mínimo de 4,5:1
+                # para 10px. Não existe cinza que passe nos dois: o canvas do
+                # mapa é transparente, então o fundo deste texto é a
+                # superfície do tema, branca de um lado e quase preta do
+                # outro. A lapela tira o texto dessa dependência.
+                get_color=[17, 24, 39],
+                background=True,
+                get_background_color=[255, 255, 255, 225],
+                background_padding=[3, 1, 3, 1],
                 get_alignment_baseline="'top'",
                 get_text_anchor="'end'",
                 pickable=False,

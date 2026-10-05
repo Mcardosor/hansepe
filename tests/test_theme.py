@@ -323,3 +323,36 @@ def test_o_chip_do_multiselect_usa_a_cor_da_pagina() -> None:
     css = c.css_base() + c.css_layout()
     trecho = css[css.index("stMultiSelectTagsContainer"):]
     assert "color: Canvas" in trecho[: trecho.index("}")]
+
+
+def test_o_numero_dentro_da_barra_e_legivel_sobre_qualquer_cor() -> None:
+    """O boletim escreve o N em branco dentro da barra — e isso só serve
+    para barra escura.
+
+    Sobre o roxo #5B4B8A o branco dá 7,45:1; sobre o laranja #E8701A cai
+    para 3,10:1, contra o mínimo de 4,5:1 da WCAG para 12px. Conferência
+    das cores dos gráficos em 05/out/2026, que o navegador não alcança
+    porque o ECharts desenha em canvas.
+    """
+    from src import grafico_componente
+    from src.doencas import hanseniase as pack
+    from src.theme import cores
+
+    for cor in (pack.COR_BOLETIM, pack.COR_BOLETIM_SECUNDARIA, "#FFFFFF", "#000000"):
+        escolhida = grafico_componente.cor_sobre(cor)
+        razao = cores.contraste(escolhida, cor)
+        assert razao >= 4.5, f"{escolhida} sobre {cor}: {razao:.2f}"
+
+
+def test_o_rotulo_de_ilha_do_mapa_nao_depende_do_tema() -> None:
+    """O canvas do mapa é transparente: sem lapela, o fundo do texto é a
+    superfície do tema, e nenhum cinza passa nos dois.
+
+    O cinza anterior dava 4,17:1 no claro e 3,21:1 no escuro.
+    """
+    import inspect
+
+    from src import mapa
+
+    fonte = inspect.getsource(mapa)
+    assert "get_color=[110, 110, 110, 230]" not in fonte, "o cinza ilegível voltou"
