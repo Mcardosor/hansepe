@@ -835,7 +835,13 @@ def css_layout() -> str:
   padding: 4px 14px;
   border-radius: {tokens.RAIO_PILL};
   background: color-mix(in srgb, var(--intro-accent, #12346B) 11%, transparent);
-  color: var(--intro-accent, #12346B);
+  /* Metade acento, metade cor do texto do tema — o mesmo recurso usado no
+     acento dos KPIs, e pelo mesmo motivo. O acento puro é azul-marinho
+     institucional: no tema claro dá 9,97:1 sobre a pílula, mas no escuro cai
+     para 1,49:1, contra o mínimo de 4,5:1 da WCAG para texto de 14px em
+     negrito. Misturado, fica 12,79:1 no claro e 5,44:1 no escuro. Medido em
+     05/out/2026; a conta está em `tests/test_theme.py`. */
+  color: color-mix(in srgb, var(--intro-accent, #12346B) 50%, currentColor);
   font-weight: 700;
   font-size: {tokens.TEXTO_XS};
 }}

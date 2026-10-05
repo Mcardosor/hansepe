@@ -237,3 +237,41 @@ def test_o_respiro_entre_controles_nao_sobra_no_ultimo() -> None:
     css = c.css_base() + c.css_layout()
     assert css.count(':not(:last-child):has([data-testid="stButtonGroup"])') == 1
     assert css.count(':not(:last-child):has([data-testid="stSelectbox"])') == 1
+
+
+def test_o_rotulo_de_controle_e_legivel_nos_dois_temas() -> None:
+    """O acento institucional some sobre o fundo escuro.
+
+    O rótulo é uma pílula com fundo de 11% do acento e texto no acento puro.
+    No tema claro isso dá 9,97:1; no escuro, 1,49:1 — contra o mínimo de
+    4,5:1 da WCAG para texto normal (14px em negrito não alcança a faixa de
+    "texto grande", que começa em 18,66px).
+
+    A correção é a mesma do acento dos KPIs: misturar com a cor do texto do
+    tema, para o ajuste seguir o tema do Streamlit e não o do sistema.
+    """
+    from src.theme import cores
+
+    MINIMO = 4.5
+    ACENTO = "#12346B"
+    TEXTO = {"claro": "#0B1220", "escuro": "#E5E7EB"}
+    FUNDO = {"claro": "#FFFFFF", "escuro": "#0B1220"}
+
+    ruins = []
+    for tema in TEXTO:
+        pilula = cores.misturar(ACENTO, FUNDO[tema], 0.89)  # 11% de acento
+        cor = cores.misturar(ACENTO, TEXTO[tema], 0.50)
+        razao = cores.contraste(cor, pilula)
+        if razao < MINIMO:
+            ruins.append(f"{tema}: {razao:.2f}")
+    assert not ruins, f"rótulo abaixo de {MINIMO}:1 — " + "; ".join(ruins)
+
+    css = c.css_base() + c.css_layout()
+    assert "var(--intro-accent, #12346B) 50%, currentColor" in css
+
+
+def test_as_superficies_usam_um_raio_so() -> None:
+    """Dois raios na mesma tela leem como descuido, não como hierarquia."""
+    from src.theme import tokens
+
+    assert tokens.RAIO_CARD == tokens.RAIO_PAINEL == "14px"
