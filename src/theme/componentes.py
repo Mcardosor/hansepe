@@ -469,7 +469,10 @@ def css_layout() -> str:
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 18px;
-  padding: 12px 18px;
+  /* O mesmo respiro lateral dos outros cartões. Com 18px aqui, a bandeira
+     começava 6px à direita da linha que o acento dos KPIs, os rótulos dos
+     controles e os títulos de seção seguem. */
+  padding: {tokens.PADDING};
   margin-bottom: 6px;
   border-radius: {tokens.RAIO_PAINEL};
   border: var(--borda);
@@ -766,11 +769,26 @@ def css_layout() -> str:
   margin-bottom: 14px;
 }}
 
+/* O ícone de ajuda não pode crescer a linha do rótulo.
+
+   Ele vem com 27px numa linha de texto de 22, e os 5px de diferença empurram
+   o controle para baixo: na faixa de controles, os seletores (rótulo sem
+   ícone) começavam em y=363 e as pílulas (rótulo com ícone) em y=368. Cinco
+   pixels numa régua de cinco colunas é o bastante para a linha parecer
+   torta. Medido na tela em 05/out/2026. */
+[data-testid="stWidgetLabel"] [data-testid="stTooltipIcon"] {{
+  height: 1.6em;
+  align-items: center;
+}}
+
 /* --- Abas: pílulas ------------------------------------------------------- */
 [data-testid="stTabs"] [role="tablist"] {{
   gap: 10px;
   border-bottom: none;
-  margin-bottom: 14px;
+  /* Zero, e não 14px: o painel da aba já traz 16px de respiro próprio, e os
+     dois somados davam 30px — o dobro do ritmo de 16px que separa todo o
+     resto da página. */
+  margin-bottom: 0;
 }}
 [data-testid="stTabs"] [data-testid="stTab"] {{
   border: 1px solid color-mix(in srgb, currentColor 16%, transparent);

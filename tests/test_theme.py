@@ -202,3 +202,27 @@ def test_bloco_de_css_injetado_nao_ocupa_espaco() -> None:
     assert 'style:only-child' in css, (
         "a regra que recolhe os blocos de CSS injetado sumiu do tema"
     )
+
+
+def test_o_icone_de_ajuda_nao_cresce_a_linha_do_rotulo() -> None:
+    """Cinco pixels bastam para a faixa de controles parecer torta.
+
+    O ícone de ajuda vem com 27px numa linha de texto de 22. Como ele fica
+    dentro do rótulo, o rótulo cresce, e o controle abaixo começa mais baixo:
+    os seletores (sem ícone) abriam em y=363 e as pílulas (com ícone) em 368.
+    Medido na tela em 05/out/2026.
+    """
+    css = c.css_base() + c.css_layout()
+    assert '[data-testid="stTooltipIcon"]' in css
+
+
+def test_a_barra_de_abas_nao_soma_dois_respiros() -> None:
+    """O painel da aba já traz 16px; a margem da barra somava mais 14.
+
+    Trinta pixels é o dobro do ritmo de 16 que separa todo o resto da página,
+    e era o maior buraco da tela depois do que já foi corrigido no topo.
+    """
+    css = c.css_base() + c.css_layout()
+    trecho = css[css.index('[role="tablist"]'):]
+    trecho = trecho[: trecho.index("}")]
+    assert "margin-bottom: 0" in trecho, "a margem que dobrava o respiro voltou"
