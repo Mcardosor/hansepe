@@ -1,15 +1,18 @@
-# CLAUDE.md
+# Manutenção
 
-Guidance for Claude Code when working in this repository.
+> **Documento interno.** Orientação para quem for trabalhar neste
+> repositório: arquitetura, comandos e armadilhas conhecidas. A documentação
+> de uso está em `metodologia.md` e `requisitos.md`.
 
 Painel de monitoramento da **hanseníase de Pernambuco**, em Streamlit.
 Reconstrução em Python do painel Shiny da equipe parceira
 (`cenariostb.unb.br/PE_HANSE_06_01`, embutido em
 `cenarios.unb.br/pernambuco-hans`), tela a tela — inventário em
-`docs/inventario-painel-origem.md`. **A cara reproduz o painel de origem; os números também, exceto casos
+`inventario-painel-origem.md`. **A cara reproduz o painel de origem; os
+números também, exceto casos
 novos e taxa de detecção, que seguem a definição do Ministério
-(`MODOENTR = 1`) desde 20/set/2026.** Cada divergência está em
-`docs/paridade-hanseniase.md` e no tooltip do card.
+(`MODOENTR = 1`).** Cada divergência está em
+`paridade-hanseniase.md` e no tooltip do card.
 
 Herda o core do painel nacional (`../sinan`: leitores, `Escopo`,
 navegação PE → macro → região de saúde → município, `recortes.py`) e a
@@ -24,24 +27,22 @@ Documentação, código, commits e comentários em português.
 
 Ambiente: o `.venv` do painel nacional, `../sinan/.venv` (Python 3.13). Os
 dados são **do painel**: `data/` tem só as partições `doenca=HANS` e
-`doenca=HANSENIASE`, 44 MB, geradas do lago do painel nacional por
+`doenca=HANSENIASE`, cerca de 47 MB, geradas do lago do painel nacional por
 `python -m scripts.extrair_dados_hanseniase`. Era uma junção para
-`../sinan/data` até 29/set/2026 — 241 MB com dengue, zika e tuberculose que
+`../sinan/data`, com 241 MB com dengue, zika e tuberculose que
 este painel nunca lê, e uma dependência de o sinan estar na mesma máquina.
 É cópia: quando a extração do sinan mudar, rode o script de novo
 (`data/PROCEDENCIA.json` guarda origem e data).
 
 ```bash
 streamlit run app.py                       # aplicação (porta 8501)
-pytest                                     # suíte (~380 testes, ~45 s)
+pytest                                     # suíte (435 testes, ~40 s)
 pytest tests/paridade -q                   # contra a tela do painel de origem
 pytest tests/test_aplicacao.py -q          # ponta a ponta com AppTest
 ruff check --select F app.py src tests     # código morto
 
 docker compose up -d --build               # porta 8510, /cenarios/hansepe/
 ```
-
-Config de dev do navegador: `../.claude/launch.json` tem `hansepe` na 8515.
 
 ## Arquitetura
 
@@ -68,20 +69,20 @@ PE) → `src/data/*` → `src/mapa.py`/`mapa_componente.py` e
   16 variáveis curadas.
 - **`src/mapa.py`** — pydeck; `QUARTIL` são **quintis** (`QUANTIS = 5`),
   como a origem; `alvo_do_clique` lê `cod_mun6`, `regiao`, `uf`.
-- **`tests/paridade/`** — `referencia_origem.json` foi lido da tela em
-  18/set/2026 antes de existir código.
+- **`tests/paridade/`** — `referencia_origem.json` foi lido da tela do painel
+  de origem antes de existir código aqui.
 
 ## Armadilhas
 
 - **Módulos importados não recarregam** no Streamlit: editou `src/`,
   reinicie o servidor.
-- **Mapa e gráficos são componentes próprios**, portados do tbpe em
-  21/set/2026: `src/mapa_componente.py` + `src/componente_mapa/` (deck.gl
+- **Mapa e gráficos são componentes próprios**, portados do tbpe:
+  `src/mapa_componente.py` + `src/componente_mapa/` (deck.gl
   vivo, voo da câmera e cor interpolada) e `src/grafico_componente.py` +
   `src/componente_grafico/` (ECharts vivo: ranking, tópicos, canal, série
   anual, epicurva, pirâmide e os dois empilhados do rodapé). `key` estável,
-  clique com nonce em `session_state`. O `graficos.py` Altair saiu em
-  21/set/2026. Detalhes e medição: `../tbpe/docs/mapa-clique.md`.
+  clique com nonce em `session_state`. O `graficos.py` Altair saiu do
+  projeto. Detalhes e medição: `../tbpe/docs/mapa-clique.md`.
 - **Animação não se mede no navegador embutido do app** (1 frame/s com a
   janela oculta): falso negativo.
 - **A paridade externa é o boletim da SES-PE**, não o painel de origem:
@@ -104,9 +105,9 @@ PE) → `src/data/*` → `src/mapa.py`/`mapa_componente.py` e
   o nome promete, é idêntico a `casos_total`: não serve (§1.3).
 - **`/XD data` no robocopy engole `src/data`** — foi assim que a camada de
   dados quase não veio. Mesma armadilha do `/data/` no `.gitignore`.
-- **O painel não usa o SIM** (desde 02/out/2026): óbito, mortalidade e
+- **O painel não usa o SIM**: óbito, mortalidade e
   letalidade não estão na tela, e o código os lia à toa. Ao pedir dado ao
-  banco, não pedir SIM — `docs/contrato-dados.md`, "O que pedir ao banco".
+  banco, não pedir SIM — `contrato-dados.md`, "O que pedir ao banco".
 - **Ano parcial se detecta** (`meses_com_dado`), não se presume: 2025 tem
   12 meses; a origem o marca como parcial e está errada.
 - As do sinan continuam valendo: glob na raiz de dataset, `sexo='TOTAL'`,
@@ -117,6 +118,6 @@ PE) → `src/data/*` → `src/mapa.py`/`mapa_componente.py` e
 ## Estado
 
 Fase 1, com agregados. Os sete indicadores do boletim que dá para calcular
-estão na tela; falta o % GIF na cura, que precisa da coorte. O microdado está pedido (`docs/pedido-microdado.md`);
+estão na tela; falta o % GIF na cura, que precisa da coorte. O microdado está pedido (`pedido-microdado.md`);
 com ele entram cura de coorte, contatos examinados, abandono e as taxas
-0–14 e grau II sobre casos novos. Deploy: `docs/deploy.md`.
+0–14 e grau II sobre casos novos. Deploy: `deploy.md`.

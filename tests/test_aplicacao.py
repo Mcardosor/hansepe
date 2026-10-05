@@ -2,7 +2,7 @@
 
 **O buraco que este arquivo fecha.** O resto da suíte nunca executou o
 `app.py`: importá-lo dispara o script, então `test_app.py` faz checagem
-estática com `ast` — ver CLAUDE.md, armadilha 8. São 950 linhas de
+estática com `ast` — ver docs/manutencao.md, armadilha 8. São 950 linhas de
 orquestração que nenhum teste percorria, e é exatamente onde os erros deste
 projeto têm acontecido: uma constante usada antes de existir, uma variável
 definida depois do primeiro uso, um `zip` que trunca.
