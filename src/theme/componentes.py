@@ -763,9 +763,15 @@ def css_layout() -> str:
 [data-testid="stWidgetLabel"] {{
   margin-bottom: 10px;
 }}
-/* Respiro entre um controle e o próximo na mesma coluna. */
-[data-testid="stVerticalBlock"] > [data-testid="stElementContainer"]:has([data-testid="stButtonGroup"]),
-[data-testid="stVerticalBlock"] > [data-testid="stElementContainer"]:has([data-testid="stSelectbox"]) {{
+/* Respiro entre um controle e o próximo na mesma coluna.
+
+   `:not(:last-child)` porque é respiro **entre** controles: no último da
+   coluna a margem não separa nada, e atrapalha. Numa linha alinhada pela
+   base (`vertical_alignment="bottom"`), ela entra na conta da altura e
+   desencontra os controles — era o que punha o rádio "Meses do ano" 14px
+   abaixo do seletor de grau, ao lado dele. Medido na tela em 05/out/2026. */
+[data-testid="stVerticalBlock"] > [data-testid="stElementContainer"]:not(:last-child):has([data-testid="stButtonGroup"]),
+[data-testid="stVerticalBlock"] > [data-testid="stElementContainer"]:not(:last-child):has([data-testid="stSelectbox"]) {{
   margin-bottom: 14px;
 }}
 

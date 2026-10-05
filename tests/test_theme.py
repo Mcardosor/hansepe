@@ -226,3 +226,14 @@ def test_a_barra_de_abas_nao_soma_dois_respiros() -> None:
     trecho = css[css.index('[role="tablist"]'):]
     trecho = trecho[: trecho.index("}")]
     assert "margin-bottom: 0" in trecho, "a margem que dobrava o respiro voltou"
+
+
+def test_o_respiro_entre_controles_nao_sobra_no_ultimo() -> None:
+    """Margem no último controle da coluna não separa nada — e desalinha.
+
+    Numa linha alinhada pela base, ela entra na conta da altura: o rádio
+    "Meses do ano" ficava 14px abaixo do seletor de grau ao lado dele.
+    """
+    css = c.css_base() + c.css_layout()
+    assert css.count(':not(:last-child):has([data-testid="stButtonGroup"])') == 1
+    assert css.count(':not(:last-child):has([data-testid="stSelectbox"])') == 1
