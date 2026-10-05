@@ -1,7 +1,7 @@
 """Tokens de design.
 
 Extraídos do dashboard em R, com três correções deliberadas — ver
-docs/inventario-funcionalidades.md:
+`../sinan/docs/inventario-funcionalidades.md`:
 
 - alturas fixas viraram mínimos, para não quebrar em telas menores;
 - escala tipográfica explícita, que o original não tinha;

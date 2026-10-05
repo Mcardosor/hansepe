@@ -260,8 +260,8 @@ O que sentia era a contagem exibida, e o limiar de supressão de base pequena,
 que valia metade do que aparentava: um município com 3 registros reais
 aparecia com 6 e escapava do corte em 5.
 
-Ver `excecoes.md` — virou divergência intencional, em que estamos certos e o
-original não.
+A divergência é intencional: aqui a contagem está certa e a do painel de
+origem não.
 
 ## Conciliação entre fontes
 

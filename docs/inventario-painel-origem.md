@@ -6,7 +6,7 @@
 Levantado em 18/set/2026 em <https://cenarios.unb.br/pernambuco-hans/>, que embute
 `https://cenariostb.unb.br/PE_HANSE_06_01/` (Shiny, Leaflet + ECharts). É o
 painel que o `hansepe` reconstrói em Python, tela a tela — o equivalente do
-`inventario-funcionalidades.md` do sinan. Os números foram conferidos contra
+`../sinan/docs/inventario-funcionalidades.md`. Os números foram conferidos contra
 `../sinan/data/parquet/dashboard`: **o painel lê a mesma extração**.
 
 ## 1. Faixa de KPIs (5 cards clicáveis — o clicado vira a métrica do mapa)

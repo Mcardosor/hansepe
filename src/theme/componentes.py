@@ -357,7 +357,7 @@ def css_layout() -> str:
    Esconder a chegada seria o inverso do que se quer.
 
    Isto substitui o overlay que cobre a tela por 3 s no painel em R — ver
-   `docs/paridade-com-o-painel-r.md` §4. O sinal existe, mas não bloqueia e não anuncia uma
+   `../RecifeTB/docs/paridade-com-o-painel-r.md` §4. O sinal existe, mas não bloqueia e não anuncia uma
    lentidão que não temos. */
 [data-stale] {{
   transition: opacity .12s ease;

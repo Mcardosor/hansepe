@@ -46,7 +46,7 @@ def canal_como_deles(esc: Escopo):
 
     Existe só para a conferência da regra: é a prova de que entendemos o
     método deles, e ela não pode depender da nossa escolha de quantos anos
-    usar. Ver `docs/paridade-com-o-painel-r.md` §6.
+    usar. Ver `../RecifeTB/docs/paridade-com-o-painel-r.md` §6.
     """
     return canal.montar(esc, anos_referencia=3)
 
@@ -57,7 +57,7 @@ def canal_como_deles(esc: Escopo):
 
 
 def test_o_padrao_e_cinco_anos(canal_2023) -> None:
-    """Cinco por decisão nossa; o painel de origem usa três — `docs/paridade-com-o-painel-r.md` §6."""
+    """Cinco por decisão nossa; o painel de origem usa três — `../RecifeTB/docs/paridade-com-o-painel-r.md` §6."""
     assert canal.ANOS_REFERENCIA == 5
     assert canal_2023.anos == tuple(range(ANO - 5, ANO))
 
@@ -157,7 +157,7 @@ def test_numero_de_anos_e_configuravel(esc: Escopo, n: int) -> None:
 
 def test_epicurva_cobre_a_serie_inteira(esc: Escopo) -> None:
     """Catorze anos × doze meses. O painel de origem para em 2019-12 com dado
-    até 2023 — a pergunta §4 do `docs/paridade-com-o-painel-r.md`, sem resposta —, e não copiamos
+    até 2023 — a pergunta §4 do `../RecifeTB/docs/paridade-com-o-painel-r.md`, sem resposta —, e não copiamos
     o corte: num painel cuja leitura principal é "a incidência subiu desde
     2020", esconder 2020 a 2023 apagaria o que ele tem a dizer."""
     e = canal.epicurva(esc)
