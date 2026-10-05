@@ -179,8 +179,14 @@ def css_base() -> str:
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }}
 .kpi-delta {{ margin-top: 5px; font-size: {tokens.TEXTO_XS}; font-weight: 800; }}
-.kpi-bom  {{ color: {tokens.BOM}; }}
-.kpi-ruim {{ color: {tokens.RUIM}; }}
+/* 40% da cor do texto do tema misturada à cor da variação.
+   Cada uma tinha sido escolhida pensando num tema só: o verde dava 3,30:1
+   sobre o branco e o vermelho 2,85:1 sobre o fundo escuro, contra o mínimo
+   de 4,5:1 — são 12px em peso 800, longe da faixa de texto grande. Com a
+   mistura ficam 6,76 e 5,38 no pior caso de cada uma, e verde e vermelho
+   continuam distinguíveis entre si. Medido em 05/out/2026. */
+.kpi-bom  {{ color: color-mix(in srgb, {tokens.BOM} 60%, currentColor); }}
+.kpi-ruim {{ color: color-mix(in srgb, {tokens.RUIM} 60%, currentColor); }}
 .kpi-igual {{ opacity: {tokens.NEUTRO_OPACIDADE}; }}
 
 /* Movimento vive nos componentes, não aqui.
@@ -699,7 +705,9 @@ def css_layout() -> str:
   color: inherit;
 }}
 .mapa-legenda-n {{ opacity: .62; font-variant-numeric: tabular-nums; }}
-.mapa-legenda-dica {{ font-weight: 400; opacity: .62; }}
+/* .85 e não .62: era o único texto que reprovava nos **dois** temas
+   (3,05:1 no claro, 3,91:1 no escuro). Continua secundário, só legível. */
+.mapa-legenda-dica {{ font-weight: 400; opacity: .85; }}
 .mapa-legenda-titulo {{
   display: flex;
   justify-content: space-between;
@@ -806,7 +814,10 @@ def css_layout() -> str:
 [data-testid="stTabs"] [data-testid="stTab"][aria-selected="true"] {{
   border-color: color-mix(in srgb, var(--intro-accent, #12346B) 55%, transparent);
   background: color-mix(in srgb, var(--intro-accent, #12346B) 12%, transparent);
-  color: var(--intro-accent, #12346B);
+  /* Mesma mistura do rótulo de widget, e pelo mesmo motivo: o acento puro
+     dava 1,49:1 no tema escuro. A aba **selecionada** era a ilegível, o que
+     é pior do que parece — é a que diz onde o usuário está. */
+  color: color-mix(in srgb, var(--intro-accent, #12346B) 50%, currentColor);
 }}
 /* O sublinhado que o Streamlit desenha sob a aba ativa sai: com a pílula ele
    vira um segundo indicador de seleção dizendo a mesma coisa, e em cor que
@@ -824,7 +835,22 @@ def css_layout() -> str:
 [data-testid="stButtonGroup"] button[aria-checked="true"],
 [data-testid="stButtonGroup"] button[aria-pressed="true"] {{
   border-color: color-mix(in srgb, var(--intro-accent, #12346B) 55%, transparent) !important;
-  background: color-mix(in srgb, var(--intro-accent, #12346B) 12%, transparent);
+  /* 7% e não 12%: no tema claro o fundo mais forte derrubava o texto para
+     4,33:1. Corrigir pelo fundo, e não pela cor do texto — quem pinta o
+     texto aqui é o Streamlit, com o primário **do tema**, enquanto
+     `--intro-accent` é fixo; sobrescrever trocava o laranja claro do tema
+     escuro pelo escuro, e o contraste caía para 2,30:1. */
+  background: color-mix(in srgb, var(--intro-accent, #12346B) 7%, transparent);
+}}
+
+/* O chip do multiselect é laranja com texto branco escolhido pelo Streamlit.
+   No tema escuro o primário clareia para #ED853A e o branco cai para 2,62:1.
+   `Canvas` é a cor de fundo da página: branca no tema claro (5,12:1 sobre o
+   laranja escuro) e quase preta no escuro (7,15:1 sobre o laranja claro).
+   Não existe cor fixa que passe nos dois laranjas — uma precisa de texto
+   claro e a outra de texto escuro. */
+[data-testid="stMultiSelectTagsContainer"] span {{
+  color: Canvas;
 }}
 
 /* --- Rótulo de widget: pílula, como "Ano: 2023" e "Métrica: Incidência" -- */

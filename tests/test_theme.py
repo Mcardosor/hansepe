@@ -288,3 +288,38 @@ def test_o_rotulo_de_controle_fica_numa_linha_so() -> None:
     trecho = trecho[: trecho.index("}")]
     assert "white-space: nowrap" in trecho
     assert "text-overflow: ellipsis" in trecho
+
+
+def test_a_variacao_do_kpi_e_legivel_nos_dois_temas() -> None:
+    """Verde e vermelho foram escolhidos cada um pensando num tema.
+
+    O verde dava 3,30:1 sobre o branco; o vermelho, 2,85:1 sobre o fundo
+    escuro. São 12px em peso 800 — texto normal pela WCAG, mínimo 4,5:1.
+    Varredura da tela em 05/out/2026.
+    """
+    from src.theme import cores, tokens
+
+    MINIMO = 4.5
+    FUNDO = {"claro": "#FFFFFF", "escuro": "#0B1220"}
+    TEXTO = {"claro": "#0B1220", "escuro": "#E5E7EB"}
+
+    ruins = []
+    for nome, cor in (("bom", tokens.BOM), ("ruim", tokens.RUIM)):
+        for tema in FUNDO:
+            misturada = cores.misturar(cor, TEXTO[tema], 0.40)
+            razao = cores.contraste(misturada, FUNDO[tema])
+            if razao < MINIMO:
+                ruins.append(f"{nome} no {tema}: {razao:.2f}")
+    assert not ruins, f"abaixo de {MINIMO}:1 — " + "; ".join(ruins)
+
+
+def test_o_chip_do_multiselect_usa_a_cor_da_pagina() -> None:
+    """Nenhuma cor fixa passa nos dois laranjas do tema.
+
+    O primário é #C1440A no claro e #ED853A no escuro. Branco dá 5,12:1 no
+    primeiro e 2,62:1 no segundo; um texto escuro inverte o problema
+    (3,65:1 e 7,15:1). `Canvas` resolve porque acompanha o tema.
+    """
+    css = c.css_base() + c.css_layout()
+    trecho = css[css.index("stMultiSelectTagsContainer"):]
+    assert "color: Canvas" in trecho[: trecho.index("}")]
