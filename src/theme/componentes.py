@@ -833,6 +833,15 @@ def css_layout() -> str:
   align-items: center;
   gap: 6px;
   padding: 4px 14px;
+  /* Numa linha só. Em tela estreita "Nível do mapa" quebrava em duas e a
+     coluna inteira descia 23px, desalinhando a faixa de novo — o mesmo
+     defeito que o ícone de ajuda causava, por outro caminho. O corte com
+     reticências é a saída se um dia o rótulo não couber: ele perde letra,
+     mas não desloca o controle. */
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
   border-radius: {tokens.RAIO_PILL};
   background: color-mix(in srgb, var(--intro-accent, #12346B) 11%, transparent);
   /* Metade acento, metade cor do texto do tema — o mesmo recurso usado no

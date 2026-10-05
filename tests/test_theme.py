@@ -275,3 +275,16 @@ def test_as_superficies_usam_um_raio_so() -> None:
     from src.theme import tokens
 
     assert tokens.RAIO_CARD == tokens.RAIO_PAINEL == "14px"
+
+
+def test_o_rotulo_de_controle_fica_numa_linha_so() -> None:
+    """Rótulo que quebra em duas linhas desloca o controle e torna a faixa.
+
+    Em 1024px, "Nível do mapa" quebrava e a coluna descia 23px — o mesmo
+    desalinhamento que o ícone de ajuda causava, por outro caminho.
+    """
+    css = c.css_base() + c.css_layout()
+    trecho = css[css.index('[data-testid="stWidgetLabel"] > span'):]
+    trecho = trecho[: trecho.index("}")]
+    assert "white-space: nowrap" in trecho
+    assert "text-overflow: ellipsis" in trecho
