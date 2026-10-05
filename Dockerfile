@@ -22,6 +22,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.lock.txt .
 RUN pip install --no-cache-dir -r requirements.lock.txt
 
+# Título, descrição e Open Graph no HTML que o Streamlit serve. Sem isto, o
+# link compartilhado no WhatsApp aparece como "Streamlit" e o domínio: o
+# `page_title` é aplicado por JavaScript depois da carga, e nenhum rastreador
+# de prévia espera o JS rodar.
+#
+# O script falha o build se a âncora sumir numa versão nova do Streamlit, em
+# vez de gerar em silêncio uma imagem que volta a se anunciar errado.
+COPY scripts/preparar_metatags.py /tmp/
+RUN python /tmp/preparar_metatags.py && rm /tmp/preparar_metatags.py
+
+# A prévia tem de sair pelo mesmo caminho do painel, então vai para o estático
+# do Streamlit: é de lá que o servidor serve tudo sob `/cenarios/hansepe/`.
+COPY assets/preview.png /usr/local/lib/python3.13/site-packages/streamlit/static/preview.png
+
 COPY app.py .
 COPY src/ src/
 COPY assets/ assets/
