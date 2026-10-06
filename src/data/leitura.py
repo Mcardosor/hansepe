@@ -682,22 +682,107 @@ def composicao(
     total = float(dados["n"].sum())
     dados["pct"] = (dados["n"] / total * 100) if total >= MINIMO_PARA_PERCENTUAL else pd.NA
     dados["total"] = total
-    if numerica:
-        dados["_ordem"] = pd.to_numeric(dados["valor"], errors="coerce")
-        dados = dados.sort_values("_ordem")
-    elif ordem == "codigo":
-        # A ordem do **campo**, como o boletim publica: ignorado/branco
-        # primeiro, depois os códigos em ordem. Ordenar por frequência, que
-        # era o que fazíamos, muda a posição da categoria conforme o recorte —
-        # "Ign/Branco" salta do fim para o meio ao clicar num município, e
-        # quem compara dois recortes lado a lado compara posições diferentes.
-        codigo = dados["valor"].astype(str).str.strip()
-        dados["_ign"] = (~codigo.str.fullmatch(r"\d+")) | codigo.isin(CODIGOS_IGNORADO)
-        dados["_ordem"] = pd.to_numeric(codigo, errors="coerce")
-        dados = dados.sort_values(["_ign", "_ordem"], ascending=[False, True])
-    else:
-        dados = dados.sort_values("n", ascending=False)
+    dados = _ordenar_categorias(dados, numerica=numerica, ordem=ordem)
     return dados[["categoria", "n", "pct", "total"]].reset_index(drop=True)
+
+
+def serie_composicao(
+    esc: Escopo,
+    variavel: str,
+    rotulos: dict[str, str] | None = None,
+    numerica: bool = False,
+    ordem: str = "frequencia",
+    ano_min: int | None = None,
+) -> pd.DataFrame:
+    """A mesma distribuição de :func:`composicao`, mas ano a ano.
+
+    Devolve ``ano``, ``categoria``, ``n`` e ``pct``, com o percentual
+    calculado **dentro de cada ano** — a soma de um ano dá 100, e é isso que
+    deixa a composição comparável entre anos de volumes diferentes.
+
+    Pedido da equipe parceira: o gráfico de um ano mostra a fotografia, e a
+    pergunta dela era o movimento. Em forma clínica, por exemplo, a
+    tuberculoide cai de 27% para 8% entre 2010 e 2025 enquanto a dimorfa sobe
+    de 32% para 45% — nada disso aparece numa barra só.
+
+    Uma consulta para todos os anos: a partição de `sinan_landing` é
+    doença/nível/ano, e omitir o ano varre todos. As categorias e a ordem
+    saem das mesmas regras de :func:`composicao`, para as duas vistas não
+    discordarem sobre o nome ou a posição de uma categoria.
+    """
+    particao, onde_geo, params_geo = particao_e_filtro_geo(esc)
+    fonte = caminho(
+        "sinan_landing", doenca=config.cod_landing(esc.doenca), nivel=particao
+    )
+    sql = f"""
+        SELECT ano, trim(valor) AS valor, any_value(valor_lbl) AS valor_lbl,
+               sum(n) AS n
+        FROM read_parquet('{fonte}', hive_partitioning=true)
+        WHERE variavel = ? AND sexo = 'TOTAL'
+    """
+    params: list = [variavel]
+    if onde_geo:
+        sql += f" AND {onde_geo}"
+        params += list(params_geo)
+    if ano_min is not None:
+        sql += " AND ano >= ?"
+        params.append(int(ano_min))
+    sql += " GROUP BY ano, valor ORDER BY ano"
+    dados = conectar().execute(sql, params).fetchdf()
+    if dados.empty:
+        return pd.DataFrame(columns=["ano", "categoria", "n", "pct"])
+
+    rotulos = rotulos or {}
+    if numerica:
+        dados["categoria"] = dados["valor"]
+    else:
+        dados["categoria"] = dados["valor_lbl"].where(
+            dados["valor_lbl"].notna(), dados["valor"].map(lambda v: rotulos.get(v, v))
+        )
+    dados["n"] = pd.to_numeric(dados["n"], errors="coerce").fillna(0)
+    dados = dados[dados["n"] > 0]
+    if dados.empty:
+        return pd.DataFrame(columns=["ano", "categoria", "n", "pct"])
+
+    total_ano = dados.groupby("ano")["n"].transform("sum")
+    # O piso de publicação vale por ano: um ano magro não publica percentual,
+    # e os demais continuam.
+    dados["pct"] = (dados["n"] / total_ano * 100).where(
+        total_ano >= MINIMO_PARA_PERCENTUAL
+    )
+    return _ordenar_categorias(dados, numerica=numerica, ordem=ordem)[
+        ["ano", "categoria", "n", "pct"]
+    ].reset_index(drop=True)
+
+
+def _ordenar_categorias(
+    dados: pd.DataFrame, *, numerica: bool, ordem: str
+) -> pd.DataFrame:
+    """A ordem das categorias, a mesma nas duas vistas de composição.
+
+    ``codigo`` é a ordem do **campo**, como o boletim publica: ignorado e
+    branco primeiro, depois os códigos em sequência. Ordenar por frequência,
+    que era o que fazíamos, muda a posição da categoria conforme o recorte —
+    "Ign/Branco" salta do fim para o meio ao clicar num município, e quem
+    compara dois recortes lado a lado compara posições diferentes.
+
+    Com ``ano`` presente, ordena dentro de cada ano: na série, a ordem de
+    empilhamento tem de ser a mesma em todas as colunas, senão a faixa de uma
+    categoria troca de altura de um ano para o outro.
+    """
+    if numerica:
+        dados = dados.assign(_ordem=pd.to_numeric(dados["valor"], errors="coerce"))
+        return dados.sort_values(["ano", "_ordem"] if "ano" in dados else ["_ordem"])
+    if ordem == "codigo":
+        codigo = dados["valor"].astype(str).str.strip()
+        dados = dados.assign(
+            _ign=(~codigo.str.fullmatch(r"\d+")) | codigo.isin(CODIGOS_IGNORADO),
+            _ordem=pd.to_numeric(codigo, errors="coerce"),
+        )
+        chaves = (["ano"] if "ano" in dados else []) + ["_ign", "_ordem"]
+        return dados.sort_values(chaves, ascending=[True] * (len(chaves) - 2) + [False, True])
+    chaves = (["ano"] if "ano" in dados else []) + ["n"]
+    return dados.sort_values(chaves, ascending=[True] * (len(chaves) - 1) + [False])
 
 
 def meses_com_dado(doenca: str, ano: int) -> int:

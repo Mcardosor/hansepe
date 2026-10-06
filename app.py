@@ -222,6 +222,19 @@ def _piramide(ano: int, nivel: str, mun: str | None, macro, micro) -> pd.DataFra
 
 
 @st.cache_data(ttl=TTL_DADOS, show_spinner=False)
+def _serie_composicao(nivel: str, mun: str | None, macro, micro, variavel: str) -> pd.DataFrame:
+    """A distribuição ano a ano. Sem `ano` na chave: a série é a mesma para
+    qualquer ano selecionado, e incluir o ano multiplicaria o cache por 16."""
+    return leitura.serie_composicao(
+        _escopo(_anos()[-1], nivel, mun, macro, micro),
+        variavel,
+        rotulos=pack.ROTULOS_VALORES.get(variavel),
+        numerica=variavel in pack.VARIAVEIS_NUMERICAS,
+        ordem="codigo",
+    )
+
+
+@st.cache_data(ttl=TTL_DADOS, show_spinner=False)
 def _composicao(ano: int, nivel: str, mun: str | None, macro, micro, variavel: str) -> pd.DataFrame:
     return leitura.composicao(
         _escopo(ano, nivel, mun, macro, micro),
@@ -952,7 +965,67 @@ AJUDA_TOPICOS = (
 )
 
 
+#: As duas vistas de um tópico, e o rótulo no botão.
+VISTAS_TOPICO = {
+    "ANO": "Ano selecionado",
+    "SERIE": "Série histórica",
+}
+
+
+def _vista_dos_topicos() -> str:
+    return st.session_state.get("vista_topicos") or "ANO"
+
+
+def _desenhar_topico_em_serie(variavel: str, rotulo: str) -> None:
+    """A distribuição ano a ano, em colunas empilhadas.
+
+    Pedido da equipe parceira em outubro: o gráfico de um ano mostra a
+    fotografia, e o que ela queria ver era o movimento. Em forma clínica, a
+    tuberculoide cai de 27% para 8% entre 2010 e 2025 enquanto a dimorfa sobe
+    de 32% para 45%, e a não classificada quintuplica.
+    """
+    dados = _recortar(
+        _serie_composicao(nav.nivel, nav.mun, nav.macro, nav.micro, variavel)
+    )
+    grafico, calha = _com_calha(
+        f"Proporção de casos segundo {rotulo.lower()} por ano — {_local()}"
+    )
+    with grafico:
+        grafico_componente.desenhar(
+            grafico_componente.composicao_por_ano(dados, cor=pack.COR_BOLETIM),
+            altura=ALTURA_TOPICO_COLUNA,
+            key=f"topico-serie-{variavel}",
+        )
+    with calha:
+        # Calha própria, e não `_calha_base`: aqui o denominador é um por ano,
+        # não um só. Dizer "2.466 casos" seria falso — esse é o total de um
+        # ano, e a série tem dezesseis.
+        if dados.empty:
+            return
+        anos = sorted(dados["ano"].unique())
+        por_ano = dados.groupby("ano")["n"].sum()
+        st.markdown(
+            ui.quadro_parametros(
+                "Base do cálculo",
+                (
+                    f"{int(anos[0])} a {int(anos[-1])}, "
+                    f"{ui.formatar_inteiro(float(por_ano.sum()))} casos com o "
+                    f"campo preenchido",
+                    f"Por ano: de {ui.formatar_inteiro(float(por_ano.min()))} a "
+                    f"{ui.formatar_inteiro(float(por_ano.max()))}",
+                    "Cada coluna soma 100%: o que se compara é a composição, "
+                    "não o volume de casos.",
+                ),
+                fonte=FONTE_DADOS,
+            ),
+            unsafe_allow_html=True,
+        )
+
+
 def _desenhar_topico(variavel: str, rotulo: str) -> None:
+    if _vista_dos_topicos() == "SERIE":
+        _desenhar_topico_em_serie(variavel, rotulo)
+        return
     dados = _composicao(nav.ano, nav.nivel, nav.mun, nav.macro, nav.micro, variavel)
     # Coluna ou barra deitada conforme o boletim desenha aquela variável —
     # ele não usa o mesmo gráfico para tudo. Ver `pack.ORIENTACAO_TOPICO`.
@@ -1109,6 +1182,19 @@ with resiliencia.painel("Tópicos de interesse"), st.container(border=True, key=
         format_func=lambda c: INDICADORES_EM_SERIE.get(c) or planas[c],
         label_visibility="collapsed",
         placeholder="Escolha os indicadores e as variáveis a exibir",
+    )
+    st.segmented_control(
+        "Vista",
+        list(VISTAS_TOPICO),
+        format_func=lambda v: VISTAS_TOPICO[v],
+        default=_vista_dos_topicos(),
+        key="vista_topicos",
+        label_visibility="collapsed",
+        help=(
+            "**Ano selecionado** mostra a distribuição do ano escolhido acima, "
+            "como o boletim publica. **Série histórica** mostra como essa "
+            "distribuição mudou ano a ano, em colunas que somam 100%."
+        ),
     )
     if not escolhidas:
         st.caption("Nada escolhido. Use o campo acima para trazer o que interessa.")

@@ -235,3 +235,51 @@ def test_o_painel_abre_no_ultimo_ano_de_coorte_fechada() -> None:
     seletor = next(s for s in at.selectbox if s.label == "Ano")
     assert seletor.value == config.ANO_PADRAO
     assert config.ANO_PADRAO != max(seletor.options)
+
+
+def test_a_vista_em_serie_dos_topicos_monta() -> None:
+    """A distribuição ano a ano, pedida pela equipe parceira em outubro.
+
+    Nasceu de um erro meu: a calha reaproveitava `_calha_base`, que lê a
+    coluna `total` — existe na composição de um ano, não na série, onde o
+    denominador é um por ano. O `KeyError` derrubava a seção inteira de
+    tópicos, e a suíte passou porque nenhum teste chegava a trocar a vista.
+
+    O teste roda os três tópicos padrão na vista de série, que é o caminho
+    que ninguém exercitava.
+    """
+    at = AppTest.from_file(APLICACAO, default_timeout=LIMITE)
+    at.session_state["vista_topicos"] = "SERIE"
+    at.run()
+    _conferir(at, "tópicos em série")
+
+    titulos = " ".join(m.value for m in at.markdown)
+    assert "por ano" in titulos
+    # A calha diz o intervalo e o aviso de que cada coluna soma 100%.
+    assert "Cada coluna soma 100%" in titulos
+
+
+def test_a_serie_de_composicao_fecha_em_cem_por_ano() -> None:
+    """Cada coluna é uma distribuição: a soma do ano tem de dar 100.
+
+    Se um dia o leitor passar a trazer categoria repetida, ou a somar o
+    percentual sobre a série inteira em vez de sobre o ano, a coluna deixa de
+    fechar e o empilhado mente sobre a composição.
+    """
+    from src.data import leitura
+    from src.data.escopo import Escopo
+
+    serie = leitura.serie_composicao(
+        Escopo("HANSENIASE", 2024, "UF", uf="PE"),
+        "FORMACLINI",
+        rotulos=pack.ROTULOS_VALORES.get("FORMACLINI"),
+        ordem="codigo",
+    )
+    assert not serie.empty
+    soma = serie.groupby("ano")["pct"].sum()
+    assert soma.between(99.9, 100.1).all(), soma[~soma.between(99.9, 100.1)]
+
+    # A ordem de empilhamento é a mesma em todos os anos, senão a faixa de
+    # uma categoria troca de altura de um ano para o outro.
+    ordens = {tuple(g) for _, g in serie.groupby("ano")["categoria"]}
+    assert len(ordens) == 1, f"a ordem das categorias muda entre anos: {ordens}"

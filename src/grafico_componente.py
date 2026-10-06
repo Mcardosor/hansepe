@@ -26,6 +26,7 @@ Regras da opção, para a animação funcionar:
 from __future__ import annotations
 
 import json
+import unicodedata
 from pathlib import Path
 
 import pandas as pd
@@ -33,6 +34,7 @@ import streamlit.components.v1 as components
 
 from .theme import componentes as ui
 from .theme import cores as paleta
+from .theme import visao
 from .theme import tokens
 
 DIRETORIO = Path(__file__).resolve().parent / "componente_grafico"
@@ -401,6 +403,132 @@ RAMPA_REFERENCIA = ("#C3CBD4", "#A8B6C6", "#8C9FB8", "#6E88AA", "#4A78B0")
 #: Nomes das duas séries mudas que desenham a faixa (ver `canal_endemico`).
 _FAIXA_BASE = "\u200b"
 _FAIXA_ALTURA = "\u200b\u200b"
+
+
+#: Cinza das categorias que não são classe: "Ignorado", "Não classificada",
+#: "Em branco". Fora da rampa de propósito — elas não ocupam posição numa
+#: ordem de gravidade, e pintá-las com um tom da rampa sugeriria que sim.
+COR_SEM_CLASSE = "#9AA0AA"
+
+#: Palavras que marcam categoria sem classe, comparadas sem acento e em
+#: minúscula.
+_SEM_CLASSE = ("ignorado", "nao classificada", "nao classificado", "em branco",
+               "sem informacao", "nao informado", "ign/branco")
+
+
+def _sem_classe(categoria: str) -> bool:
+    texto = unicodedata.normalize("NFKD", str(categoria).lower())
+    texto = "".join(c for c in texto if not unicodedata.combining(c))
+    return any(marca in texto for marca in _SEM_CLASSE)
+
+
+def cores_das_categorias(categorias: list[str], base: str) -> dict[str, str]:
+    """Uma cor por categoria, do mais claro ao mais escuro na ordem recebida.
+
+    A ordem das categorias é a do campo, que na maioria das variáveis da
+    ficha é também uma ordem de gravidade — indeterminada, tuberculoide,
+    dimorfa, virchowiana. Usar uma rampa em vez de cores avulsas faz a
+    sequência das cores dizer isso, e tem um efeito colateral bom: tons de
+    uma rampa diferem em luminosidade, que é o canal que nenhum tipo de
+    daltonismo apaga. Com sete categorias empilhadas, cores avulsas de mesma
+    luminosidade seriam indistinguíveis.
+    """
+    com_classe = [c for c in categorias if not _sem_classe(c)]
+    if not com_classe:
+        return {c: COR_SEM_CLASSE for c in categorias}
+
+    # Escolhe por **luminosidade**, e não por posição na rampa. A rampa não é
+    # linear em L*: os três tons escuros ficam entre 29 e 16, e pegar um sim
+    # outro não punha duas categorias vizinhas a ΔE 9,6 — indistinguíveis
+    # empilhadas uma sobre a outra. Medido com `theme/visao.py`.
+    rampa = paleta.rampa(base)
+    luz = [visao.luminosidade(c) for c in rampa]
+    alvos = _luminosidades_alvo(max(luz), min(luz), len(com_classe))
+    escolhidos = [rampa[min(range(len(luz)), key=lambda i: abs(luz[i] - a))] for a in alvos]
+    cores = dict(zip(com_classe, escolhidos, strict=True))
+    return {c: cores.get(c, COR_SEM_CLASSE) for c in categorias}
+
+
+def _luminosidades_alvo(claro: float, escuro: float, quantas: int) -> list[float]:
+    """Luminosidades espaçadas por igual, do mais claro ao mais escuro."""
+    if quantas == 1:
+        return [(claro + escuro) / 2]
+    passo = (claro - escuro) / (quantas - 1)
+    return [claro - i * passo for i in range(quantas)]
+
+
+def composicao_por_ano(
+    dados: pd.DataFrame,
+    *,
+    rotulo: str = "",
+    cor: str,
+    maximo: float | None = 100,
+) -> dict:
+    """A mesma distribuição, ano a ano, em colunas empilhadas em 100%.
+
+    O gráfico de um ano mostra a fotografia; este mostra o movimento. Pedido
+    da equipe parceira em outubro, a partir da forma clínica: entre 2010 e
+    2025 a tuberculoide cai de 27% para 8% e a dimorfa sobe de 32% para 45%,
+    e nada disso aparece numa barra só.
+
+    Empilhado em 100%, e não colunas lado a lado: o que se compara é a
+    **composição**, e o volume de casos muda bastante entre os anos. Lado a
+    lado, um ano com metade dos casos pareceria ter metade de tudo.
+    """
+    opt = _base()
+    if dados.empty:
+        return _recado(opt, "Sem série para esta variável")
+
+    anos = [str(int(a)) for a in sorted(dados["ano"].unique())]
+    # A ordem de empilhamento é a da primeira aparição, que o leitor já
+    # ordenou pelo campo. `drop_duplicates` preserva essa ordem.
+    categorias = list(dados["categoria"].drop_duplicates())
+    cores = cores_das_categorias(categorias, cor)
+
+    series = []
+    for categoria in categorias:
+        por_ano = dados[dados["categoria"] == categoria].set_index("ano")["pct"]
+        series.append({
+            "id": f"cat-{categoria}", "name": categoria, "type": "bar",
+            "stack": "composicao",
+            "data": [_valor(por_ano.get(int(a))) for a in anos],
+            "itemStyle": {
+                "color": cores[categoria],
+                # Fio entre as faixas empilhadas, em cinza médio.
+                #
+                # Cinco categorias não cabem numa escala sequencial com folga
+                # de cor: espaçadas por luminosidade, as vizinhas ficam em
+                # ΔE 15 a 19, acima do indistinguível mas abaixo do
+                # confortável. É a mesma aritmética da rampa do mapa. O fio
+                # resolve por outro canal — a borda existe mesmo quando os
+                # dois tons se parecem —, e o cinza médio é o único que
+                # contrasta com as duas pontas da rampa e sobrevive aos dois
+                # temas.
+                "borderColor": "rgba(127,127,127,.7)",
+                "borderWidth": 1,
+            },
+            "barCategoryGap": "22%",
+        })
+    series[-1]["itemStyle"]["borderRadius"] = [2, 2, 0, 0]
+
+    opt.update({
+        "grid": {"left": 56, "right": 16, "top": 16, "bottom": 64},
+        "xAxis": _eixo_categoria(anos) | {"name": "Ano", "nameLocation": "middle",
+                                          "nameGap": 28},
+        "yAxis": _eixo_valor("% dos casos") | ({"max": maximo} if maximo else {}),
+        "series": series,
+        "legend": {
+            "data": categorias, "bottom": 0, "left": "center", "icon": "roundRect",
+            "itemWidth": 12, "itemHeight": 10,
+            "textStyle": {"fontSize": _FONTE_PX, "fontWeight": "normal"},
+        },
+        "tooltip": {"trigger": "axis", "axisPointer": {"type": "shadow"},
+                    "rotuloValor": "%", "casas": 1},
+    })
+    if rotulo:
+        opt["title"] = {"text": rotulo, "left": 0, "top": 0,
+                        "textStyle": {"fontSize": 13, "fontWeight": 600}}
+    return opt
 
 
 def _eixo_valor(rotulo: str) -> dict:
