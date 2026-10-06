@@ -1210,8 +1210,8 @@ def deck(
     mapa_deck.map_style = ESTILO_SEM_FUNDO
     _compactar(mapa_deck)
 
-    # O zoom pela roda do mouse é bloqueado no DOM, por
-    # `componentes.script_travar_zoom`. Declarar `controller: false` aqui não
+    # O zoom pela roda do mouse é tratado dentro do componente, em
+    # `componente_mapa/mapa.js`. Declarar `controller: false` aqui não
     # adianta: o `DeckGlJsonChart` do Streamlit renderiza
     # `<DeckGL controller={true}>` fixo e descarta o que vem no JSON. Havia
     # duas declarações inertes neste ponto — saíram, porque código que não faz

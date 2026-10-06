@@ -113,3 +113,20 @@ def test_o_tooltip_fica_a_esquerda_do_ponteiro() -> None:
 
     js = (mapa_componente.DIRETORIO / "mapa.js").read_text(encoding="utf-8")
     assert "requestAnimationFrame" not in js, "o reposicionamento que piscava voltou"
+
+
+def test_o_mapa_limita_a_altura_pela_largura() -> None:
+    """A altura vem do Python, que não sabe a largura do aparelho.
+
+    Pernambuco é largo: numa caixa estreita e alta quem limita o desenho é a
+    largura, e o resto vira vazio. Num aparelho de 375px a caixa tinha 318 por
+    640 e o estado ocupava uma faixa no meio. O componente mede a própria
+    largura e põe um teto, que derrubou a caixa para 366px sem encolher o
+    mapa.
+
+    Só limita, nunca aumenta: em tela de trabalho a altura do Python continua
+    valendo, porque lá ela está casada com a coluna da direita.
+    """
+    js = (mapa_componente.DIRETORIO / "mapa.js").read_text(encoding="utf-8")
+    assert "function alturaUtil" in js
+    assert "Math.min(pedida" in js, "o teto tem de limitar, não substituir"

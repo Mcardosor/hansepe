@@ -77,10 +77,26 @@
   document.getElementById("mais").addEventListener("click", () => { zoom(1); devolverFoco(); });
   document.getElementById("menos").addEventListener("click", () => { zoom(-1); devolverFoco(); });
 
+  // A altura pedida pelo Python é de tela de trabalho; o Python não sabe a
+  // largura do aparelho, mas este iframe sabe a sua.
+  //
+  // Pernambuco é largo: numa caixa estreita e alta, quem limita o desenho é a
+  // largura, e o resto da altura vira vazio. Num aparelho de 375px a caixa
+  // tinha 318 por 640 e o estado ocupava uma faixa no meio, com cerca de
+  // 500px de nada em volta. O teto de 1,15 vez a largura tira o vazio sem
+  // encolher o mapa.
+  //
+  // Só limita, nunca aumenta: em tela de trabalho a altura do Python continua
+  // valendo, porque lá ela está casada com a coluna da direita.
+  function alturaUtil(pedida) {
+    const largura = raiz.clientWidth || window.innerWidth || pedida;
+    return Math.round(Math.min(pedida, Math.max(largura * 1.15, 280)));
+  }
+
   function render(args) {
     const spec = typeof args.spec === "string" ? JSON.parse(args.spec) : args.spec;
     tooltipSpec = args.tooltip || null;
-    const altura = Number(args.altura) || 500;
+    const altura = alturaUtil(Number(args.altura) || 500);
     // Quem pediu menos movimento no sistema não recebe voo nem interpolação:
     // a câmera vai direto ao enquadramento novo.
     const menosMovimento = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
