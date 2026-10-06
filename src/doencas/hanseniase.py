@@ -245,6 +245,11 @@ CORTES_FIXOS = {
     "gif_avaliado_pct": (0, 75, 90, 100),
     # Bom < 10% · Regular 10–25% · Precário > 25% (Gráfico 13)
     "abandono_pct": (0, 10, 25, 100),
+    # Faixas de contagem, **não** régua do Ministério: endemicidade é conceito
+    # de taxa, e contagem bruta não tem classe oficial. Por isso não tem nomes
+    # em `NOMES_FIXOS`, e por isso `tem_regua_oficial` responde não. Fica aqui
+    # porque a repartição é útil na legenda e pode voltar sob outro nome, se a
+    # equipe parceira quiser.
     "casos": (0, 5, 10, 25, 50, 100),
 }
 
@@ -266,6 +271,23 @@ NOMES_FIXOS = {
 
 def cortes_fixos(metrica: str) -> tuple[float, ...] | None:
     return CORTES_FIXOS.get(metrica)
+
+
+def tem_regua_oficial(metrica: str) -> bool:
+    """Se a métrica tem a régua do Ministério, com classes nomeadas.
+
+    Ter corte não basta: `casos` tem faixas de contagem, que repartem bem o
+    mapa mas não são endemicidade — endemicidade é conceito de taxa. O que
+    distingue uma régua oficial é ela **nomear** as classes: "Baixo",
+    "Médio", "Alto". Daí a conta ser sobre `NOMES_FIXOS`, e não sobre a
+    existência de cortes.
+
+    Quem pergunta é o seletor de cores: oferecer "Endemicidade" onde ela não
+    existe faz o mapa classificar de outro jeito com o botão aceso dizendo
+    que é a régua oficial. Foi o que a equipe parceira apontou na revisão de
+    outubro.
+    """
+    return bool(CORTES_FIXOS.get(metrica) and NOMES_FIXOS.get(metrica))
 
 
 def nomes_fixos(metrica: str) -> tuple[str, ...] | None:

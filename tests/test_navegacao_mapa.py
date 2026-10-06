@@ -10,6 +10,8 @@ responde por ele e a geometria tem de casar chave a chave.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from src import mapa
@@ -198,3 +200,43 @@ def test_metricas_0_14_pintam_em_todo_recorte(metrica: str, recorte: str) -> Non
         )
         assert len(valores) == (4 if recorte == "MACRO" else 12)
     assert valores.notna().any()
+
+
+def test_endemicidade_so_onde_existe_regua_oficial() -> None:
+    """O botão não pode prometer a régua do Ministério e entregar outra.
+
+    Com `casos`, `casos_0_14` ou `cura` selecionados, a escala fixa caía em
+    quebras naturais e o botão continuava aceso dizendo "Endemicidade": o
+    mapa classificava de um jeito e anunciava outro. A equipe parceira pegou
+    isso na revisão de outubro, ao ver números e cores mudarem com a opção
+    marcada.
+
+    O que define régua oficial é ela **nomear** as classes. `casos` tem
+    cortes — faixas de contagem úteis na legenda —, mas contagem bruta não
+    tem classe de endemicidade, que é conceito de taxa.
+    """
+    from src.doencas import hanseniase as pack
+
+    com_regua = [m for m in pack.METRICAS_MAPA if pack.tem_regua_oficial(m)]
+    assert com_regua == ["incid", "taxa_det_0_14"]
+
+    for metrica in pack.METRICAS_MAPA:
+        cortes = pack.cortes_fixos(metrica)
+        nomes = pack.nomes_fixos(metrica)
+        if pack.tem_regua_oficial(metrica):
+            # Uma classe a mais que os cortes internos: o primeiro corte é o
+            # piso da escala e o último, o teto.
+            assert nomes and cortes and len(nomes) == len(cortes)
+        else:
+            assert not nomes, f"{metrica} nomeia classes mas não é régua oficial"
+
+
+def test_metrica_sem_regua_cai_em_quebras_naturais() -> None:
+    """E não em quintis: com contagem, o quintil põe 37 municípios em cada
+    cor independentemente do valor, e o mapa deixa de distinguir quem tem 3
+    casos de quem tem 400."""
+    import re
+
+    fonte = (Path(__file__).resolve().parents[1] / "app.py").read_text(encoding="utf-8")
+    assert re.search(r'CLASSIFICACAO_SEM_REGUA = "NATURAL"', fonte)
+    assert "if c != \"FIXA\" or com_regua" in fonte

@@ -63,7 +63,13 @@ AJUDA_CLASSIFICACAO = """Como as cores repartem os valores.
 
 **Quintis** põem um quinto dos municípios em cada cor — é a classificação do painel de origem. Fácil de explicar, mas a régua muda a cada ano.
 
-**Endemicidade** usa os parâmetros oficiais: Baixo (< 2), Médio (2,00–9,99), Alto (10,00–19,99), Muito alto (20,00–39,99) e Hiperendêmico (≥ 40 por 100 mil). É a única que deixa dois anos comparáveis."""
+**Endemicidade** usa os parâmetros oficiais: Baixo (< 2), Médio (2,00–9,99), Alto (10,00–19,99), Muito alto (20,00–39,99) e Hiperendêmico (≥ 40 por 100 mil). É a única que deixa dois anos comparáveis, e só aparece nas taxas de detecção — contagem de casos não tem classe de endemicidade."""
+
+#: Classificação usada quando a métrica escolhida não tem régua oficial.
+#: Quebras naturais, e não quintis: com contagem de casos, o quintil coloca
+#: 37 municípios em cada cor independentemente do valor, e o mapa deixa de
+#: distinguir quem tem 3 casos de quem tem 400.
+CLASSIFICACAO_SEM_REGUA = "NATURAL"
 
 TODO_O_ESTADO = "— todo o estado —"
 
@@ -521,16 +527,34 @@ with resiliencia.painel("Controles"), st.container(border=True, key="cartao-cont
             nav.definir_recorte(recorte)
             st.rerun()
     with col_cores:
+        # "Endemicidade" só onde ela existe. Para `casos`, `casos_0_14` e
+        # `cura` o mapa caía em quebras naturais com o botão aceso dizendo
+        # "Endemicidade" — classificava de um jeito e anunciava outro. A
+        # equipe parceira pegou isso na revisão de outubro, ao ver os números
+        # e as cores mudarem com a opção marcada.
+        com_regua = pack.tem_regua_oficial(nav.metrica)
+        opcoes = [
+            c for c in mapa.CLASSIFICACOES if c != "FIXA" or com_regua
+        ]
+        preferida = st.session_state.get("classificacao", "FIXA")
+        # Caiu para a opção de reserva porque a métrica não tem régua, e não
+        # porque alguém clicou nela.
+        forcada = preferida not in opcoes
+        escolhida = CLASSIFICACAO_SEM_REGUA if forcada else preferida
         classificacao = st.segmented_control(
             "Cores",
-            mapa.CLASSIFICACOES,
+            opcoes,
             format_func=lambda c: ROTULO_CLASSIFICACAO[c],
-            default=st.session_state.get("classificacao", "FIXA"),
+            default=escolhida,
             help=AJUDA_CLASSIFICACAO,
         )
-        if classificacao:
+        # A escolha guardada é a do usuário, não a de reserva: trocar para
+        # Curas e voltar para Detecção devolve a endemicidade, em vez de
+        # exigir reescolher. Sem esta guarda, o próprio `default` do controle
+        # volta como valor e sobrescreve a preferência no caminho de ida.
+        if classificacao and not (forcada and classificacao == CLASSIFICACAO_SEM_REGUA):
             st.session_state["classificacao"] = classificacao
-        classificacao = st.session_state.get("classificacao", "FIXA")
+        classificacao = classificacao or escolhida
     with col_busca:
         nomes = _municipios()
         opcoes = [TODO_O_ESTADO, *sorted(nomes, key=lambda c: nomes[c])]
