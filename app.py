@@ -984,9 +984,12 @@ def _desenhar_topico_em_serie(variavel: str, rotulo: str) -> None:
     tuberculoide cai de 27% para 8% entre 2010 e 2025 enquanto a dimorfa sobe
     de 32% para 45%, e a não classificada quintuplica.
     """
-    dados = _recortar(
-        _serie_composicao(nav.nivel, nav.mun, nav.macro, nav.micro, variavel)
-    )
+    # Sem `_recortar`: a série vai da primeira à última, e não segue a janela
+    # de 5/10/15 anos do gráfico de evolução. Aqui o que se olha é o movimento
+    # da composição ao longo de todo o período, que foi o pedido; e a janela
+    # mora noutra seção, de modo que respeitá-la aqui mudaria este gráfico por
+    # um controle que não está à vista.
+    dados = _serie_composicao(nav.nivel, nav.mun, nav.macro, nav.micro, variavel)
     grafico, calha = _com_calha(
         f"Proporção de casos segundo {rotulo.lower()} por ano — {_local()}"
     )
@@ -1193,7 +1196,8 @@ with resiliencia.painel("Tópicos de interesse"), st.container(border=True, key=
         help=(
             "**Ano selecionado** mostra a distribuição do ano escolhido acima, "
             "como o boletim publica. **Série histórica** mostra como essa "
-            "distribuição mudou ano a ano, em colunas que somam 100%."
+            "distribuição mudou ano a ano, desde 2010, em colunas que somam "
+            "100%. A série ignora a janela de anos do gráfico de evolução."
         ),
     )
     if not escolhidas:

@@ -283,3 +283,20 @@ def test_a_serie_de_composicao_fecha_em_cem_por_ano() -> None:
     # uma categoria troca de altura de um ano para o outro.
     ordens = {tuple(g) for _, g in serie.groupby("ano")["categoria"]}
     assert len(ordens) == 1, f"a ordem das categorias muda entre anos: {ordens}"
+
+
+def test_a_serie_dos_topicos_ignora_a_janela_de_anos() -> None:
+    """A série vai de 2010 em diante, mesmo com a janela em 5 anos.
+
+    A janela de 5/10/15 anos mora na seção de evolução temporal. Respeitá-la
+    aqui faria este gráfico mudar por um controle que não está à vista, e o
+    pedido era justamente ver o movimento ao longo de todo o período.
+    """
+    at = AppTest.from_file(APLICACAO, default_timeout=LIMITE)
+    at.session_state["vista_topicos"] = "SERIE"
+    at.session_state["janela"] = 5
+    at.run()
+    _conferir(at, "tópicos em série com janela curta")
+
+    texto = " ".join(m.value for m in at.markdown)
+    assert "2010 a" in texto, "a calha deveria anunciar a série inteira"
