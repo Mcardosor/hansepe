@@ -459,7 +459,7 @@ def _card(metrica: str, atual, anterior) -> None:
         sub += f" • {classe}"
     st.markdown(
         ui.kpi_card(
-            pack.rotulo(metrica) if proporcao else pack.rotulo_curto(metrica),
+            pack.rotulo(metrica) if proporcao else pack.rotulo_card(metrica),
             ui.formatar_decimal(valor) if taxa else ui.formatar_inteiro(valor),
             cor=pack.cor(metrica),
             subtitulo=sub,
@@ -636,7 +636,7 @@ with esquerda:
 
             st.markdown(
                 ui.titulo_legenda(
-                    pack.rotulo(nav.metrica),
+                    pack.rotulo_mapa(nav.metrica),
                     UNIDADE_RECORTE[recorte_mapa].capitalize(),
                 ),
                 unsafe_allow_html=True,
@@ -856,8 +856,13 @@ with direita:
         with aba_piramide, resiliencia.painel("Pirâmide etária"):
             dados_pir = _piramide(nav.ano, nav.nivel, nav.mun, nav.macro, nav.micro)
             por_100mil = st.toggle(
-                "Por 100 mil habitantes",
-                help="Desconta o tamanho de cada faixa etária na população.",
+                "Taxa de detecção por 100 mil habitantes",
+                help=(
+                    "Casos da faixa etária ÷ população da mesma faixa × 100.000. "
+                    "Desconta o tamanho de cada faixa, então compara grupos de "
+                    "tamanhos diferentes. Desligado, o gráfico mostra a contagem "
+                    "de casos."
+                ),
             )
             grafico_componente.desenhar(
                 grafico_componente.piramide(dados_pir, rotulo="Casos", por_100mil=por_100mil),
@@ -937,7 +942,8 @@ ALTURA_TOPICO_COLUNA = 260
 LARGURA_ROTULO_TOPICO = 150
 
 AJUDA_TOPICOS = (
-    "Distribuição de cada variável da ficha de hanseníase no recorte corrente. "
+    "Distribuição de cada variável da ficha de hanseníase no ano e no "
+    "território selecionados — um ano por vez, não a série inteira. "
     "As três que abrem são as que o Boletim Epidemiológico comenta na análise "
     "(Gráficos 6, 8 e 9); raça/cor e escolaridade, que ele também publica, "
     "estão a um clique no seletor. Cada uma é desenhada como lá — coluna ou "
@@ -956,7 +962,9 @@ def _desenhar_topico(variavel: str, rotulo: str) -> None:
         if orientacao == "coluna"
         else max(grafico_componente.altura_composicao(len(dados)), ALTURA_MINIMA_TOPICO)
     )
-    grafico, calha = _com_calha(f"Proporção de casos segundo {rotulo.lower()}")
+    grafico, calha = _com_calha(
+        f"Proporção de casos segundo {rotulo.lower()} — {_local()}, {nav.ano}"
+    )
     with grafico:
         # ECharts vivo, uma instância por variável: ao clicar no mapa as barras
         # deslizam juntas para o recorte novo.

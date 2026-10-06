@@ -55,8 +55,8 @@ ROTULOS = {
     # Nomes como o Boletim Epidemiológico de Hanseníase (SES-PE) escreve.
     "cura_pct": "Proporção de cura",
     "abandono_pct": "Proporção de abandono",
-    "contatos_pct": "Contatos examinados",
-    "gif_avaliado_pct": "GIF avaliado no diagnóstico",
+    "contatos_pct": "Proporção de contatos examinados",
+    "gif_avaliado_pct": "Proporção de GIF avaliado no diagnóstico",
 }
 
 #: Os quadros de parâmetros do boletim, **palavra por palavra**, para irem
@@ -220,6 +220,36 @@ def rotulo(metrica: str) -> str:
 
 def rotulo_curto(metrica: str) -> str:
     return ROTULOS_CURTOS.get(metrica, rotulo(metrica))
+
+
+#: Título do card de KPI, entre o nome curto do botão e o nome completo.
+#:
+#: "Detecção" basta num botão, onde o contexto é a lista de métricas, mas no
+#: card ele compete com "Casos novos" ao lado e a leitura fica ambígua: os
+#: dois falam de detecção, só que um é taxa e o outro é contagem. Pedido da
+#: equipe parceira na revisão de outubro.
+ROTULOS_CARD = {
+    "incid": "Taxa de detecção",
+    "taxa_det_0_14": "Taxa de detecção 0–14",
+}
+
+
+def rotulo_card(metrica: str) -> str:
+    return ROTULOS_CARD.get(metrica, rotulo_curto(metrica))
+
+
+#: Nome na legenda do mapa. As métricas de contagem ganham "Número de" para
+#: não serem lidas como indicador: no mapa, "Casos novos" ao lado de uma
+#: escala de cores parecia uma taxa. Pedido da mesma revisão.
+ROTULOS_MAPA = {
+    "casos": "Número de casos novos",
+    "casos_0_14": "Número de casos de 0 a 14 anos",
+    "cura": "Número de curas",
+}
+
+
+def rotulo_mapa(metrica: str) -> str:
+    return ROTULOS_MAPA.get(metrica, rotulo(metrica))
 
 
 def rampa_mapa(metrica: str) -> list[str]:

@@ -129,27 +129,37 @@ def css_base() -> str:
 }}
 .kpi-icon svg {{ width: 16px; height: 16px; }}
 .kpi-card:has(.kpi-icon) .kpi-title {{ padding-right: 34px; }}
-/* Uma linha, com reticências como último recurso.
+/* Duas linhas reservadas, em todos os cards.
    
-   Duas linhas era o desenho anterior, e existia porque o rótulo completo
-   ("Taxa de mortalidade (por 100 mil hab.)") não cabia em uma. A solução
-   passou a ser outra: `pack.rotulo_curto` encurta o **texto**, e aí uma linha
-   basta — os seis KPIs cabem numa faixa só, como no painel de origem, sem o
-   corte que lá transforma "Taxa de mortalidade" em "Taxa de mort...".
+   O desenho anterior era uma linha com reticências, e funcionava enquanto os
+   rótulos eram curtos. Em outubro a equipe parceira pediu "Taxa de detecção"
+   e "Taxa de detecção 0–14" no lugar de "Detecção": no card, "Detecção" ao
+   lado de "Casos novos" é ambíguo, porque os dois falam de detecção e só um é
+   taxa.
    
-   As reticências continuam declaradas para o caso de um rótulo novo passar do
-   tamanho: cortar é melhor que empurrar o valor para baixo e desalinhar a
-   faixa inteira. O nome completo vive no `title` do card. */
+   Com o rótulo novo, a conta ficou no limite: em 1366px — a largura mínima
+   que a documentação declara — "Taxa de detecção 0–14" pede exatamente os
+   196px disponíveis, e abaixo disso corta. Margem zero não é margem.
+   
+   A reserva é para **todos** os cards, e não só para quem quebra: com altura
+   de título variando entre cards, o valor de um fica mais baixo que o do
+   vizinho e a faixa desalinha. Custa 17px de altura na linha inteira, que é
+   o preço de caber.
+   
+   As reticências continuam, agora em duas linhas, para o caso de um rótulo
+   novo passar também desse tamanho. */
 .kpi-title {{
   font-size: {tokens.TEXTO_SM};
   font-weight: 700;
   opacity: .74;
   margin-bottom: 3px;
   line-height: 1.25;
-  min-height: 1.25em;
-  white-space: nowrap;
+  min-height: 2.5em;
   overflow: hidden;
   text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }}
 /* O acento se ajusta ao tema sem media query. `prefers-color-scheme` segue o
    sistema operacional, e não o tema do Streamlit — com o app em claro e o
@@ -1115,7 +1125,7 @@ def titulo_legenda(titulo: str, unidade: str = "") -> str:
     isso o número ao lado de "< 2" parece um terceiro valor.
     """
     dica = (
-        f'<span class="mapa-legenda-dica">{escape(unidade)} por faixa</span>'
+        f'<span class="mapa-legenda-dica">({escape(unidade)} por faixa)</span>'
         if unidade else ""
     )
     return (

@@ -194,7 +194,10 @@ def test_um_clique_na_metrica_realca_o_card_na_mesma_passada() -> None:
     # que nada tivesse quebrado (28/set/2026).
     cards = re.findall(r'class="kpi-card is-selected[^"]*"((?:(?!kpi-card)[\s\S])*)', html)
     assert len(cards) == 1
-    assert pack.rotulo_curto(alvo) in cards[0]
+    # `rotulo_card`, e não `rotulo_curto`: o botão da métrica continua curto
+    # ("Detecção"), mas o card diz "Taxa de detecção" — no card ele compete
+    # com "Casos novos" ao lado, e os dois falam de detecção.
+    assert pack.rotulo_card(alvo) in cards[0]
 
 
 @pytest.mark.parametrize("janela", [5, 15])

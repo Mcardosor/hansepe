@@ -356,3 +356,22 @@ def test_o_rotulo_de_ilha_do_mapa_nao_depende_do_tema() -> None:
 
     fonte = inspect.getsource(mapa)
     assert "get_color=[110, 110, 110, 230]" not in fonte, "o cinza ilegível voltou"
+
+
+def test_o_titulo_do_card_cabe_em_duas_linhas() -> None:
+    """Os rótulos cresceram e a reserva de uma linha deixou de bastar.
+
+    Com "Taxa de detecção 0–14", pedido pela equipe parceira, a largura
+    disponível em 1366px — o mínimo que a documentação declara — é exatamente
+    a necessária. Medido na tela: 196px de 196px. A reserva vale para todos
+    os cards, e não só para quem quebra: título de altura diferente entre
+    cards desalinha o valor de um em relação ao vizinho.
+    """
+    css = c.css_base() + c.css_layout()
+    # A primeira ocorrência é `.kpi-card:has(.kpi-icon) .kpi-title`, que só
+    # ajusta o respiro do ícone. A regra da reserva é a declarada sozinha.
+    inicio = css.index(chr(10) + ".kpi-title {")
+    trecho = css[inicio : css.index("}", inicio)]
+    assert "min-height: 2.5em" in trecho
+    assert "-webkit-line-clamp: 2" in trecho
+    assert "white-space: nowrap" not in trecho
