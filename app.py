@@ -496,9 +496,15 @@ with resiliencia.painel("Indicadores"):
         _kpis(nav.ano - 1, nav.nivel, nav.mun, nav.macro, nav.micro)
         if nav.ano > min(_anos()) else None
     )
-    for coluna, metrica in zip(st.columns(len(KPIS_FAIXA)), KPIS_FAIXA, strict=True):
-        with coluna:
-            _card(metrica, atual, anterior)
+    # Chave própria para o CSS poder mirar **esta** faixa. O seletor
+    # `:has(.kpi-card)` que usávamos casava também a linha do mapa, porque os
+    # cards de proporção moram dentro da coluna da direita — e com isso a
+    # largura mínima de 150px vazava para lá e impedia o empilhamento no
+    # celular, deixando o mapa com 125px de largura.
+    with st.container(key="faixa-kpis"):
+        for coluna, metrica in zip(st.columns(len(KPIS_FAIXA)), KPIS_FAIXA, strict=True):
+            with coluna:
+                _card(metrica, atual, anterior)
 
 
 # ---------------------------------------------------------------------------

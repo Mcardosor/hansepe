@@ -5,7 +5,7 @@ Os ajustes já publicados estão em <https://painel.cenarios.unb.br/cenarios/han
 
 ---
 
-Rafaela, obrigado pela revisão — foi detalhada e rendeu bastante. Sete dos
+Ana Flávia, obrigado pela revisão — foi detalhada e rendeu bastante. Sete dos
 dez pontos já estão no ar. Três dependem de uma decisão sua, e dois de uma
 informação que só a equipe que gera a extração pode dar. Respondo na ordem
 do seu documento.

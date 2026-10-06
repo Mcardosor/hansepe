@@ -375,3 +375,20 @@ def test_o_titulo_do_card_cabe_em_duas_linhas() -> None:
     assert "min-height: 2.5em" in trecho
     assert "-webkit-line-clamp: 2" in trecho
     assert "white-space: nowrap" not in trecho
+
+
+def test_o_painel_se_reorganiza_no_celular() -> None:
+    """Três regras que o aparelho de 375px exige, e que faltavam.
+
+    O cabeçalho em três colunas dava 77px ao título, que quebrava letra a
+    letra — dez linhas — e o cartão comia 334px dos 812 da tela. A largura
+    mínima dos cards, escrita para a faixa de KPIs, vazava pela linha do mapa
+    por causa de um `:has(.kpi-card)` que casava os cards de proporção dentro
+    da coluna da direita: o mapa ficava com 125px de largura. E o título do
+    card, em duas linhas, corta em 164px.
+    """
+    css = c.css_base() + c.css_layout()
+    assert "@media (max-width: 639px)" in css
+    # A regra da faixa de KPIs mira a chave, e não a presença de um card.
+    assert ".st-key-faixa-kpis [data-testid=\"stColumn\"]" in css
+    assert ':has(.kpi-card) > [data-testid="stColumn"]' not in css

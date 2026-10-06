@@ -161,6 +161,16 @@ def css_base() -> str:
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
 }}
+/* No celular a faixa vira dois cards por linha, com 164px cada, e duas
+   linhas deixam de bastar: "Taxa de detecção 0–14" corta no meio. Três
+   linhas custam 18px por faixa de cards, que é barato perto de um rótulo
+   pela metade. */
+@media (max-width: 639px) {{
+  .kpi-title {{
+    -webkit-line-clamp: 3;
+    min-height: 3.75em;
+  }}
+}}
 /* O acento se ajusta ao tema sem media query. `prefers-color-scheme` segue o
    sistema operacional, e não o tema do Streamlit — com o app em claro e o
    sistema em escuro, pintaria o acento errado.
@@ -435,7 +445,7 @@ def css_layout() -> str:
    mínimo por coluna, recupera-se o comportamento do grid `auto-fit` do
    original — que a troca por colunas reais (necessária para os botões) havia
    custado. */
-[data-testid="stHorizontalBlock"]:has(.kpi-card) {{
+.st-key-faixa-kpis [data-testid="stHorizontalBlock"] {{
   flex-wrap: wrap;
   /* A faixa de KPIs é uma seção, e estava a 16px da linha de baixo — o mesmo
      respiro que separa dois controles irmãos. Com isso os cards encostavam
@@ -444,7 +454,7 @@ def css_layout() -> str:
      a diferença entre os dois que agrupa a faixa. */
   margin-bottom: 32px;
 }}
-[data-testid="stHorizontalBlock"]:has(.kpi-card) > [data-testid="stColumn"] {{
+.st-key-faixa-kpis [data-testid="stColumn"] {{
   /* 150px para os seis caberem lado a lado numa tela de trabalho, e a
      quebra do `flex-wrap` acima continuar cuidando das estreitas: em telas
      menores eles viram três e três, depois dois e dois, sem media query. */
@@ -502,6 +512,8 @@ def css_layout() -> str:
 .sinan-intro-texto {{
   min-width: 0;
   text-align: center;
+}}
+
 }}
 /* A bandeira tem a altura do bloco de texto e cantos discretos. `flex-shrink`
    zero: em janela estreita quem cede é o título, que quebra linha — a
@@ -588,6 +600,38 @@ def css_layout() -> str:
   text-wrap: balance;
   color: inherit;
 }}
+/* No celular o cabeçalho vira duas faixas: bandeira e marca em cima, título
+   embaixo, ocupando a largura inteira.
+
+   Em três colunas num aparelho de 375px, o título ficava com 77px e quebrava
+   **letra a letra** — dez linhas para "Painel de Monitoramento da Hanseníase
+   de PE" —, e o cartão sozinho comia 334px dos 812 da tela. Empilhado, cabe
+   em duas linhas e o cartão cai para menos da metade.
+
+   O `order` é o que mantém bandeira e marca lado a lado: sem ele o texto,
+   que vem antes da marca no HTML, empurra a marca para uma terceira faixa
+   só dela.
+
+   Depois da regra do título de propósito: as duas têm a mesma
+   especificidade, e aqui a ordem no arquivo é o desempate. */
+@media (max-width: 639px) {{
+  .sinan-intro {{
+    grid-template-columns: auto 1fr;
+    gap: 12px;
+    row-gap: 6px;
+    align-items: center;
+  }}
+  .sinan-intro-bandeira {{ height: 40px; order: 1; }}
+  .sinan-intro-marca {{ order: 2; }}
+  .sinan-intro-texto {{
+    grid-column: 1 / -1;
+    order: 3;
+    text-align: left;
+  }}
+  .sinan-intro h1.sinan-intro-titulo {{ text-align: left; }}
+  .sinan-intro-escopo {{ text-align: left; }}
+}}
+
 /* A marca é texto, não imagem.
 
    Era um JPEG sobre uma placa branca explícita. A placa existia porque JPEG
