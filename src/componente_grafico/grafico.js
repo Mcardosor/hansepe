@@ -46,6 +46,62 @@
     }, 0);
   }
 
+  /** Cabe um rótulo por categoria na largura que o gráfico tem?
+
+      O rótulo de valor é escrito pelo Python, que não sabe a largura da tela.
+      Num aparelho de 375px a coluna do gráfico tem 318, e "Casos de 0 a 14
+      anos por ano" desenha onze anos ali: os onze N encostam uns nos outros e
+      saem como um bloco único — `267220228189194102 95112 97125`. Deixa de ser
+      número e vira ruído em cima da barra.
+
+      A conta é de espaço, não de aparelho: divide-se a área de desenho pelo
+      número de categorias e, nas barras agrupadas, pelo número de colunas que
+      dividem a categoria. Barra empilhada não entra nessa divisão — as fatias
+      ocupam a mesma coluna e seus rótulos se empilham na vertical.
+
+      Vale só quando o eixo das categorias é o horizontal. Nas barras
+      deitadas o rótulo sai na ponta, onde o aperto seria de altura, e ali
+      não há aperto.
+
+      Escondido o rótulo, o valor continua no eixo e no toque — o tooltip do
+      ECharts abre no toque, que é como se lê num celular. */
+  function rotuloCabe(option) {
+    const eixo = option.xAxis;
+    if (!eixo || eixo.type !== "category" || !Array.isArray(eixo.data) || !eixo.data.length) {
+      return true;
+    }
+    const grade = option.grid || {};
+    const util = (raiz.clientWidth || 0) - (Number(grade.left) || 0) - (Number(grade.right) || 0);
+    if (util <= 0) return true;
+
+    const comRotulo = (option.series || []).filter((s) => s.label && s.label.show);
+    if (!comRotulo.length) return true;
+    // Colunas que dividem a largura da categoria: barras agrupadas. A linha
+    // passa por cima da mesma coluna, e a pilha também.
+    const colunas = Math.max(1, comRotulo.filter((s) => s.type === "bar" && !s.stack).length);
+
+    let maiorTexto = 0;
+    let corpo = 10;
+    comRotulo.forEach((s) => {
+      const casas = Number(s.label.casas) || 0;
+      corpo = Math.max(corpo, Number(s.label.fontSize) || 10);
+      (s.data || []).forEach((d) => {
+        const v = d && typeof d === "object" ? d.value : d;
+        if (v === null || v === undefined) return;
+        maiorTexto = Math.max(maiorTexto, Number(v).toLocaleString("pt-BR", {
+          minimumFractionDigits: casas,
+          maximumFractionDigits: casas,
+        }).length);
+      });
+    });
+    if (!maiorTexto) return true;
+
+    // 0,58 é a largura média do dígito em fonte de interface; 4px separam
+    // dois rótulos vizinhos para que não se toquem.
+    const preciso = maiorTexto * corpo * 0.58 + 4;
+    return util / eixo.data.length / colunas >= preciso;
+  }
+
   function render(args, tema) {
     const option = typeof args.option === "string" ? JSON.parse(args.option) : args.option;
     const altura = Number(args.altura) || 300;
@@ -126,7 +182,9 @@
     // manda `label.casas`; o formatador em pt-BR nasce aqui, porque função
     // não atravessa o JSON que o componente recebe. Valor nulo — ano de
     // coorte aberta — não escreve "null" em cima da barra vazia.
+    const cabe = rotuloCabe(option);
     (option.series || []).forEach((s) => {
+      if (s.label && s.label.show && !cabe) s.label.show = false;
       if (s.label && s.label.casas !== undefined) {
         const casasRotulo = Number(s.label.casas) || 0;
         // Cor explícita do Python (o branco de dentro da barra) manda; sem

@@ -205,3 +205,39 @@ def test_barras_empilhadas_com_linha_em_eixo_proprio() -> None:
     assert opt["series"][2]["yAxisIndex"] == 1 and len(opt["yAxis"]) == 2
     assert opt["series"][2]["data"] == [{"name": "2023", "value": 75.0}, {"name": "2024", "value": 72.1}]
     assert opt["tooltip"]["casasPorSerie"] == {"Proporção MB (%)": 1, "PB": 0, "MB": 0}
+
+
+def test_o_rotulo_de_valor_cede_quando_a_coluna_e_estreita() -> None:
+    """Onze anos em 318px: os N encostam e viram um borrão.
+
+    No celular a coluna do gráfico tem 318px. "Casos de 0 a 14 anos por ano"
+    desenha onze barras ali, cada uma com o N escrito dentro, e o resultado
+    saiu como `267220228189194102 95112 97125` — deixa de ser número.
+
+    Quem decide é o componente, não o Python: a largura da tela não chega ao
+    servidor. A regra divide a área de desenho pelo número de categorias e,
+    nas barras agrupadas, pelas colunas que dividem a categoria; a pilha não
+    entra na divisão, porque suas fatias ocupam a mesma coluna.
+
+    Só vale com as categorias no eixo horizontal. Na barra deitada o rótulo
+    sai na ponta, e o aperto ali seria de altura.
+    """
+    js = (gc.DIRETORIO / "grafico.js").read_text(encoding="utf-8")
+    assert "function rotuloCabe" in js
+    # Some o rótulo, não a série: o valor continua no eixo e no toque.
+    assert "s.label.show = false" in js
+    assert 'eixo.type !== "category"' in js, "a barra deitada não pode entrar na conta"
+    assert "!s.stack" in js, "a pilha divide a categoria e não deve contar como coluna"
+
+
+def test_o_componente_do_grafico_esta_versionado() -> None:
+    """O `?v=` é o que faz o navegador buscar o arquivo novo.
+
+    Sem a marca, quem já abriu o painel continua com o JS em cache e a
+    correção não chega — é invisível no deploy e só aparece como "aqui não
+    mudou nada".
+    """
+    html = (gc.DIRETORIO / "index.html").read_text(encoding="utf-8")
+    import hashlib
+    atual = hashlib.sha1((gc.DIRETORIO / "grafico.js").read_bytes()).hexdigest()[:8]
+    assert f"grafico.js?v={atual}" in html, "rode `python -m scripts.versionar_js`"
