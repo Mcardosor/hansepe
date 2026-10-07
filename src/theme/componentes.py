@@ -866,6 +866,29 @@ def css_layout() -> str:
   padding: 5px 16px;
   font-weight: 600;
 }}
+/* No celular a pílula cresce para o dedo.
+
+   Com 32px de altura ela passa no mínimo da WCAG (2.5.8 pede 24, e as linhas
+   têm 11px de folga, 43 de centro a centro) e mesmo assim erra sob o polegar:
+   32px é a medida de um ponteiro, não de uma mão. 44 é o número que a Apple
+   usa e o piso do que se consegue acertar sem olhar.
+
+   Custa 144px na página inteira, 1,7% — medido aplicando a regra na página
+   publicada e desfazendo. Não é o alongamento que eu supus antes de medir.
+
+   O seletor mira `aria-checked` e `aria-pressed`, que são os botões de
+   opção. O ícone de ajuda é um `button` dentro do **mesmo** grupo e não leva
+   nenhum dos dois: esticado, ele viraria uma pílula comprida encostada no
+   rótulo.
+
+   Só no celular. No desktop o ponteiro acerta 32px, e a densidade de lá é
+   escolhida. */
+@media (max-width: 639px) {{
+  [data-testid="stButtonGroup"] button[aria-checked],
+  [data-testid="stButtonGroup"] button[aria-pressed] {{
+    min-height: 44px;
+  }}
+}}
 [data-testid="stButtonGroup"] button[aria-checked="true"],
 [data-testid="stButtonGroup"] button[aria-pressed="true"] {{
   border-color: color-mix(in srgb, var(--intro-accent, #12346B) 55%, transparent) !important;

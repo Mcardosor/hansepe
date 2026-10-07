@@ -25,6 +25,24 @@ TODOS_OS_KPIS = tuple(
 )
 
 
+def bloco_que_contem(css: str, posicao: int) -> str | None:
+    """Cabeçalho do bloco aberto em que `posicao` cai, ou None se no topo."""
+    # Sem os comentários: eles entram no cabeçalho do bloco e o cabeçalho
+    # deixaria de ser comparável.
+    pilha: list[str] = []
+    inicio_do_trecho = 0
+    for i, caractere in enumerate(css[:posicao]):
+        if caractere == "{":
+            cabecalho = re.sub(r"/\*.*?\*/", "", css[inicio_do_trecho:i], flags=re.S)
+            pilha.append(re.sub(r"\s+", " ", cabecalho).strip())
+            inicio_do_trecho = i + 1
+        elif caractere == "}":
+            if pilha:
+                pilha.pop()
+            inicio_do_trecho = i + 1
+    return pilha[-1] if pilha else None
+
+
 def luminancia(hexa: str) -> float:
     r, g, b = cores.hex_para_rgb(hexa)
     return 0.2126 * r + 0.7152 * g + 0.0722 * b
@@ -450,3 +468,31 @@ def test_toda_classe_que_escrevemos_tem_regra() -> None:
         if nome.startswith(PREFIXOS_NOSSOS) and f".{nome}" not in css
     )
     assert not orfas, f"sem regra no CSS: {orfas}"
+
+
+def test_a_pilula_cresce_para_o_dedo_no_celular() -> None:
+    """32px acerta com ponteiro e erra com polegar.
+
+    A altura passa no mínimo da WCAG — 2.5.8 pede 24, e as linhas de pílulas
+    têm 11px de folga — mas conforto não é conformidade. 44px é o piso do que
+    se acerta sem mirar, e custa 144px na página, 1,7%.
+
+    Dois cuidados que a regra precisa manter: fica dentro da media query do
+    celular, porque no desktop a densidade é escolhida; e mira os botões de
+    opção pelo `aria-checked`/`aria-pressed`, deixando de fora o ícone de
+    ajuda, que é um `button` dentro do mesmo grupo e viraria uma pílula
+    comprida ao lado do rótulo.
+    """
+    css = c.css_base() + c.css_layout()
+    inicio = css.index('[data-testid="stButtonGroup"] button[aria-checked]')
+    trecho = css[inicio : css.index("}", css.index("min-height", inicio))]
+    assert "min-height: 44px" in trecho
+
+    # O bloco que **contém** a regra tem de ser a media query do celular. Não
+    # basta procurar o `@media` mais próximo acima: fora da media query, o
+    # mais próximo acima continua sendo um, e a verificação passaria com a
+    # regra solta valendo para o desktop. Daí percorrer as chaves.
+    assert bloco_que_contem(css, inicio) == "@media (max-width: 639px)"
+
+    # E não pode alcançar o ícone de ajuda.
+    assert "stTooltipIcon" not in trecho
