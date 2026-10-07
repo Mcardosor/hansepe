@@ -514,7 +514,6 @@ def css_layout() -> str:
   text-align: center;
 }}
 
-}}
 /* A bandeira tem a altura do bloco de texto e cantos discretos. `flex-shrink`
    zero: em janela estreita quem cede é o título, que quebra linha — a
    bandeira espremida vira uma listra azul. */

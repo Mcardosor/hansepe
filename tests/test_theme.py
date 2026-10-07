@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import pytest
@@ -392,3 +393,28 @@ def test_o_painel_se_reorganiza_no_celular() -> None:
     # A regra da faixa de KPIs mira a chave, e não a presença de um card.
     assert ".st-key-faixa-kpis [data-testid=\"stColumn\"]" in css
     assert ':has(.kpi-card) > [data-testid="stColumn"]' not in css
+
+
+def test_o_css_nao_tem_chave_solta() -> None:
+    """Uma chave sobrando apaga a regra seguinte, em silêncio.
+
+    Aconteceu: ao mover o bloco do celular para o fim do arquivo ficou um `}`
+    órfão logo antes de `.sinan-intro-bandeira`, e o navegador descartou
+    exatamente essa regra. A bandeira perdeu o `height: 58px` e passou a
+    render no tamanho natural do arquivo — 586 x 391px ao lado de um título de
+    30px. Nenhum teste reclamou porque o seletor continuava no texto do CSS;
+    o que se perdeu foi o casamento das chaves.
+
+    Daí a verificação ser estrutural, e não por seletor: vale para toda regra
+    que venha a ser escrita depois desta.
+    """
+    css = re.sub(r"/\*.*?\*/", "", c.css_base() + c.css_layout(), flags=re.S)
+    profundidade = 0
+    for linha, texto in enumerate(css.splitlines(), start=1):
+        for caractere in texto:
+            if caractere == "{":
+                profundidade += 1
+            elif caractere == "}":
+                profundidade -= 1
+                assert profundidade >= 0, f"chave fechada a mais na linha {linha}: {texto!r}"
+    assert profundidade == 0, f"{profundidade} bloco(s) sem fechar"
