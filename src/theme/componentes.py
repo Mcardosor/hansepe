@@ -422,25 +422,6 @@ def css_layout() -> str:
   }}
 }}
 
-/* A mãozinha do deck.gl some sobre o fundo branco do mapa.
-
-   O deck escreve `cursor: grab` inline no `#deckgl-wrapper` — mão aberta, que
-   no Windows é branca com um contorno fino e desaparece contra a área vazia do
-   painel. Ficou pior quando o painel passou de 430x460 para 715x530: sobrou
-   muito mais branco em volta da geometria.
-
-   O seletor casa a **string do style inline**, e só nos estados de arrastar
-   (`grab` e `grabbing`). Assim o `pointer` que o deck põe ao passar sobre um
-   polígono continua intacto — é ele que avisa que dá para clicar e entrar no
-   recorte, que é a interação de verdade deste mapa.
-
-   Vale a mesma razão de bloquear o zoom pela roda: arrastar desenquadra um
-   mapa cujo enquadramento é calculado para caber, e sem volta a não ser
-   recarregando. Não é affordance que queiramos anunciar. */
-#deckgl-wrapper[style*="cursor: grab"] {{
-  cursor: default !important;
-}}
-
 /* O `st.columns` é uma linha flex que não quebra. Deixando quebrar, e com um
    mínimo por coluna, recupera-se o comportamento do grid `auto-fit` do
    original — que a troca por colunas reais (necessária para os botões) havia
@@ -1172,7 +1153,7 @@ def titulo_legenda(titulo: str, unidade: str = "") -> str:
         if unidade else ""
     )
     return (
-        f'<div class="mapa-legenda mapa-legenda-so-titulo">'
+        f'<div class="mapa-legenda">'
         f'<div class="mapa-legenda-titulo">{escape(titulo)}{dica}</div></div>'
     )
 

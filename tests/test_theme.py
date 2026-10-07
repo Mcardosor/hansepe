@@ -418,3 +418,35 @@ def test_o_css_nao_tem_chave_solta() -> None:
                 profundidade -= 1
                 assert profundidade >= 0, f"chave fechada a mais na linha {linha}: {texto!r}"
     assert profundidade == 0, f"{profundidade} bloco(s) sem fechar"
+
+
+#: Prefixos das classes que este projeto inventa. O resto vem do Streamlit, e
+#: estilizar classe alheia é outro assunto.
+PREFIXOS_NOSSOS = ("sinan-", "kpi-", "mapa-", "quadro-", "indicador-", "titulo-", "parametros-")
+
+
+def test_toda_classe_que_escrevemos_tem_regra() -> None:
+    """Classe no HTML sem regra no CSS é promessa que não se cumpre.
+
+    `mapa-legenda-so-titulo` ficou escrita na legenda do mapa depois que as
+    faixas viraram botões, e nunca teve uma linha de CSS. Quem lesse a
+    marcação procuraria o que ela modifica e não acharia nada.
+
+    A direção inversa — regra no CSS sem HTML que a use — não é verificável
+    aqui: boa parte da interface é condicional, e um seletor sem elemento na
+    tela de hoje pode ser o da aba que ninguém abriu.
+    """
+    css = c.css_base() + c.css_layout()
+    escrito = ""
+    for caminho in [*Path("src").rglob("*.py"), Path("app.py")]:
+        escrito += caminho.read_text(encoding="utf-8")
+
+    classes = set()
+    for atributo in re.findall(r'class="([^"{}]+)"', escrito):
+        classes |= set(atributo.split())
+
+    orfas = sorted(
+        nome for nome in classes
+        if nome.startswith(PREFIXOS_NOSSOS) and f".{nome}" not in css
+    )
+    assert not orfas, f"sem regra no CSS: {orfas}"
