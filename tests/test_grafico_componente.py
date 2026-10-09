@@ -52,7 +52,7 @@ def test_ranking_usa_a_cor_da_classe_do_mapa() -> None:
 
 
 def test_ranking_vazio_tem_recado_e_nao_estoura() -> None:
-    opt = gc.ranking(pd.DataFrame(columns=["chave", "nome", "valor"]), rotulo="x", cor="#000")
+    opt = gc.ranking(pd.DataFrame(columns=["chave", "nome", "valor"]), rotulo="x", cor="#000000")
     assert "Sem dados" in opt["title"]["text"]
     assert "series" not in opt
 
@@ -61,7 +61,7 @@ def test_opcao_serializa_com_numeros_do_numpy() -> None:
     import numpy as np
 
     tabela = _tabela().assign(valor=np.array([1, 2, 3], dtype=np.int64))
-    texto = json.dumps(gc.ranking(tabela, rotulo="x", cor="#000"), default=gc._serializar)
+    texto = json.dumps(gc.ranking(tabela, rotulo="x", cor="#000000"), default=gc._serializar)
     assert '"value": 3.0' in texto
 
 
@@ -95,7 +95,7 @@ def test_composicao_por_frequencia_com_o_maior_no_topo() -> None:
 
 def test_composicao_sem_percentual_mostra_contagem() -> None:
     base = _composicao().assign(pct=pd.NA)
-    opt = gc.composicao(base, rotulo="x", cor="#000")
+    opt = gc.composicao(base, rotulo="x", cor="#000000")
     assert opt["xAxis"]["name"] == "Casos"
     assert opt["series"][0]["data"][-1]["value"] == 2621.0
     assert "% dos casos" not in opt["series"][0]["data"][-1]["tooltip"]
@@ -108,7 +108,7 @@ def test_composicao_numerica_respeita_a_ordem_dos_dados() -> None:
 
 
 def test_composicao_vazia_tem_recado() -> None:
-    opt = gc.composicao(pd.DataFrame(columns=["categoria", "n", "pct", "total"]), rotulo="x", cor="#000")
+    opt = gc.composicao(pd.DataFrame(columns=["categoria", "n", "pct", "total"]), rotulo="x", cor="#000000")
     assert "Sem registro" in opt["title"]["text"]
 
 
@@ -253,3 +253,28 @@ def test_o_quadro_do_grafico_tem_nome_para_leitor_de_tela() -> None:
     assert "window.frameElement" in js
     assert "option.title && option.title.text" in js
     assert "Gráfico do painel" in js, "falta o nome de quando não há título"
+
+
+def test_a_epicurva_diz_o_que_cada_eixo_conta() -> None:
+    """Item 7 da revisão de outubro, fechado quando soubemos a resposta.
+
+    O eixo vertical passa a ser "Número de casos". O horizontal esperou:
+    ninguém sabia se o ano das tabelas era o de notificação ou o de
+    diagnóstico, e escrever o nome errado seria pior que não escrever. O
+    microdado liberado depois respondeu — `NU_ANO` é idêntico ao ano de
+    `DT_NOTIFIC` em 25.843 de 25.843 registros.
+
+    O nome vem de fora da função: o que o eixo conta é propriedade da
+    extração, e outro painel da família pode receber coisa diferente.
+    """
+    base = pd.DataFrame({"ano": [2024, 2024], "mes": [1, 2], "casos": [10, 12]})
+    com_nome = gc.epicurva(base, rotulo="Número de casos",
+                           rotulo_x="Ano de notificação", cor="#000000")
+    assert com_nome["xAxis"]["name"] == "Ano de notificação"
+    assert com_nome["yAxis"]["name"] == "Número de casos"
+    # A calha de baixo abre para o nome não cair em cima dos anos.
+    assert com_nome["grid"]["bottom"] > 32
+
+    sem_nome = gc.epicurva(base, rotulo="Número de casos", cor="#000000")
+    assert "name" not in sem_nome["xAxis"]
+    assert sem_nome["grid"]["bottom"] == 32

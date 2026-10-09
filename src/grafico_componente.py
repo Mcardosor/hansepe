@@ -847,7 +847,8 @@ def comparativo_anual(
     return opt
 
 
-def epicurva(dados: pd.DataFrame, *, rotulo: str, cor: str, ano_em_foco: int | None = None) -> dict:
+def epicurva(dados: pd.DataFrame, *, rotulo: str, cor: str,
+             rotulo_x: str = "", ano_em_foco: int | None = None) -> dict:
     """Série mensal contínua, atravessando os anos, com o ano em foco grosso.
 
     Eixo de tempo (não categoria): são ~180 pontos, e o ECharts escolhe os
@@ -893,9 +894,19 @@ def epicurva(dados: pd.DataFrame, *, rotulo: str, cor: str, ano_em_foco: int | N
                 "itemStyle": {"color": cor}, "z": 3,
             })
     opt.update({
-        "grid": {"left": 56, "right": 16, "top": 12, "bottom": 32},
+        # Mais fundo quando o eixo tem nome: ele é escrito abaixo dos anos,
+        # e com os 32px de antes ficaria por cima deles.
+        "grid": {"left": 56, "right": 16, "top": 12,
+                 "bottom": 48 if rotulo_x else 32},
         "xAxis": {
             "type": "time",
+            # `rotulo_x` vem de fora, e não escrito aqui: o que o eixo conta
+            # é propriedade da extração, não do desenho. Em PE o ano das
+            # tabelas é o de notificação, conferido em 25.843 de 25.843
+            # registros do microdado; outro painel da família pode receber
+            # outra coisa.
+            **({"name": rotulo_x, "nameLocation": "middle", "nameGap": 26,
+                "nameTextStyle": {"fontSize": _FONTE_PX}} if rotulo_x else {}),
             "axisLine": {"lineStyle": {"color": _COR_EIXO}},
             "axisTick": {"lineStyle": {"color": _COR_EIXO}},
             "axisLabel": {"fontSize": _FONTE_PX, "formatter": "{yyyy}"},

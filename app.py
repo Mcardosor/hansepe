@@ -869,7 +869,8 @@ with direita:
                         nav.ano, nav.nivel, nav.mun, nav.macro, nav.micro,
                         _ano_inicial(),
                     ),
-                    rotulo="Casos", cor=pack.cor("casos"), ano_em_foco=nav.ano,
+                    rotulo="Número de casos", rotulo_x="Ano de notificação",
+                    cor=pack.cor("casos"), ano_em_foco=nav.ano,
                 ),
                 altura=220, key="epicurva",
             )

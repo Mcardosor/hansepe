@@ -203,7 +203,10 @@ def test_voltar_repetido_e_estavel() -> None:
 
 def test_trilha_em_cada_etapa() -> None:
     nav = Navegacao(ano=2024)
-    assert nav.trilha() == "UF PE • Ano: 2024"
+    # "Ano de notificação", e não "Ano": a equipe parceira perguntou de qual
+    # ano se tratava e a trilha é o lugar em que a resposta cabe. No rótulo
+    # do seletor não cabe — a coluna tem 91px e o texto pede 125.
+    assert nav.trilha() == "UF PE • Ano de notificação: 2024"
 
     nav.definir_recorte("MACRO")
     assert "Macrorregiões" in nav.trilha()

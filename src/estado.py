@@ -249,5 +249,17 @@ class Navegacao:
             if self.detalhe:
                 partes.append("detalhe")
 
-        partes.append(f"Ano: {self.ano}")
+        # "Ano de notificação", e não "Ano".
+        #
+        # A equipe parceira perguntou na revisão de outubro de qual ano se
+        # trata, e ninguém soube responder na hora. A resposta veio do
+        # microdado liberado depois: o `NU_ANO` que organiza as tabelas é
+        # idêntico ao ano de `DT_NOTIFIC` em 25.843 de 25.843 registros.
+        #
+        # É aqui que a informação entra, e não no rótulo do seletor: a
+        # coluna dele tem 91px e o texto pede 125, então cortaria com
+        # reticências. Esta linha tem 1.083px de folga, é dinâmica — muda
+        # junto com o recorte — e é a que faz uma captura de tela se
+        # explicar sozinha. Procedência, como o resto dela.
+        partes.append(f"Ano de notificação: {self.ano}")
         return " • ".join(partes)
