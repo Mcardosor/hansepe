@@ -621,6 +621,8 @@ with esquerda:
                 destacado=nav.destacado or (nav.mun if nav.nivel == "MUN" and not nav.detalhe else None),
                 metodo=classificacao,
                 cortes_fixos=pack.cortes_fixos(nav.metrica),
+                nomes_fixos=pack.nomes_fixos(nav.metrica),
+                casas_regua=pack.casas_regua(nav.metrica),
                 detalhes=_detalhes_tooltip(nav.ano, nav.metrica, recorte_mapa, nav.macro),
                 faixa_realcada=st.session_state.get("faixa_realcada"),
             )
@@ -836,6 +838,8 @@ with direita:
                 pack.rampa_mapa(nav.metrica),
                 metodo=classificacao,
                 cortes_fixos=pack.cortes_fixos(nav.metrica),
+                nomes_fixos=pack.nomes_fixos(nav.metrica),
+                casas_regua=pack.casas_regua(nav.metrica),
                 decimais=1 if nav.metrica in pack.TAXAS else 0,
             )
             # ECharts vivo: ao mudar recorte, ano ou métrica as barras deslizam

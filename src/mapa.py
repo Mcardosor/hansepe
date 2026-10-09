@@ -14,6 +14,7 @@ cor só.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 
 import numpy as np
@@ -285,8 +286,61 @@ def escala_quartis(
     return _montar(cortes, rampa, decimais)
 
 
+def _montar_regua(
+    cortes: list[float], rampa: list[str], nomes: tuple[str, ...], casas: int
+) -> Escala:
+    """A régua do Ministério, idêntica em todo recorte e em todo ano.
+
+    **Não olha os dados.** É o ponto da escala fixa: as classes são as
+    declaradas, todas, sempre. A versão anterior derivava a última classe do
+    máximo observado — ela só existia quando algum valor passava do teto —, e
+    onde não passava a legenda dizia "≥ 20 Muito alto" e a classe
+    Hiperendêmico sumia. Acontecia de verdade: nas macrorregiões de 2025, nas
+    duas taxas de detecção.
+
+    Os limites saem com infinito nas pontas porque é assim que a régua se lê:
+    "< 2" não tem piso e "≥ 40" não tem teto. Com o máximo observado no lugar
+    do infinito, o próprio município mais alto do ano ficava fora da última
+    classe.
+
+    O rótulo reproduz a citação do boletim: a classe que vai de 2 até antes
+    de 10 se escreve "2,00 a 9,99", e não "2 a 10". Escrita do segundo jeito,
+    o 10 aparecia em duas faixas da legenda e não se sabia a qual pertencia —
+    foi o que a equipe parceira apontou. `casas` é com quantas decimais o
+    documento escreve a régua, que não é a precisão do dado nem a dos cortes:
+    o boletim declara 9,99 para as taxas e 89,9 para a cura.
+    """
+    inicios = [float(c) for c in cortes[1 : len(nomes)]]
+    indices = np.linspace(0, len(rampa) - 1, len(nomes)).round().astype(int)
+    tons = [rampa[i] for i in indices]
+    passo = 10.0 ** -casas
+
+    def rotulo(i: int) -> str:
+        if i == 0:
+            return f"< {_formatar(inicios[0], casas)}"
+        if i == len(nomes) - 1:
+            return f"≥ {_formatar(inicios[-1], casas)}"
+        return (
+            f"{_formatar(inicios[i - 1], casas)} a "
+            f"{_formatar(inicios[i] - passo, casas)}"
+        )
+
+    rotulos = [rotulo(i) for i in range(len(nomes))]
+    cores = dict(zip(rotulos, tons, strict=True))
+    cores[ROTULO_SEM_DADO] = SEM_DADO
+    return Escala(
+        cortes=[-math.inf, *inicios, math.inf], rotulos=rotulos, cores=cores
+    )
+
+
 def escala_fixa(
-    valores: pd.Series, rampa: list[str], cortes: list[float], decimais: int = 1
+    valores: pd.Series,
+    rampa: list[str],
+    cortes: list[float],
+    decimais: int = 1,
+    *,
+    nomes: tuple[str, ...] | None = None,
+    casas_regua: int = 2,
 ) -> Escala:
     """Cortes declarados de fora, iguais em todo ano.
 
@@ -307,6 +361,12 @@ def escala_fixa(
     exibia "312 a 3.610" e o 4× Recife desaparecia. Acrescentando, ela exibe
     "312 a 624" e "624 a 3.610", que é o que se quis declarar.
     """
+    # Com `nomes`, os cortes são régua oficial e a escala não consulta os
+    # dados — ver `_montar_regua`. Sem eles são faixas de contagem, que não
+    # nomeiam classe e por isso seguem acompanhando a série.
+    if nomes:
+        return _montar_regua(list(cortes), rampa, nomes, casas_regua)
+
     limpos = pd.to_numeric(valores, errors="coerce").dropna()
     limites = sorted(float(c) for c in cortes)
     # Cortes declarados inteiros se escrevem inteiros: "< 2", não "< 2,0".
@@ -331,6 +391,8 @@ def escala(
     *,
     metodo: str = "NATURAL",
     cortes_fixos: list[float] | None = None,
+    nomes_fixos: tuple[str, ...] | None = None,
+    casas_regua: int = 2,
     classes: int = CLASSES,
     decimais: int = 1,
 ) -> Escala:
@@ -348,7 +410,14 @@ def escala(
     if alvo == "QUARTIL":
         return escala_quartis(valores, rampa, decimais)
     if alvo == "FIXA" and cortes_fixos:
-        return escala_fixa(valores, rampa, list(cortes_fixos), decimais)
+        return escala_fixa(
+            valores,
+            rampa,
+            list(cortes_fixos),
+            decimais,
+            nomes=nomes_fixos,
+            casas_regua=casas_regua,
+        )
     return escala_natural(valores, rampa, classes=classes, decimais=decimais)
 
 
@@ -358,14 +427,22 @@ def classificar(valores: pd.Series, escala: Escala) -> pd.Series:
     if not escala.rotulos:
         return pd.Series([ROTULO_SEM_DADO] * len(numeros), index=numeros.index)
 
-    # `cut` não inclui o limite inferior da primeira classe; `include_lowest`
-    # resolve, e o `duplicates` cobre cortes colapsados.
+    # `right=False`, e não o padrão do pandas.
+    #
+    # O Ministério escreve as classes fechadas à esquerda: "Baixo < 2,00",
+    # "Médio 2,00 a 9,99". Com o intervalo `(a, b]` do pandas, um município
+    # com exatamente 2,00 caía em "Baixo" — uma classe abaixo da que o manual
+    # manda. Os quatro limites erravam, nas duas taxas, e o card ao lado do
+    # mapa discordava do próprio mapa, porque `classe_de` no pacote da doença
+    # já usava `valor < corte`.
+    #
+    # O último limite vira infinito: com ele no valor máximo observado, e a
+    # classe fechada à esquerda, o município mais alto do ano ficava fora de
+    # todas as classes e saía como "sem dado".
+    bins = list(escala.cortes)
+    bins[-1] = math.inf
     faixas = pd.cut(
-        numeros,
-        bins=escala.cortes,
-        labels=escala.rotulos,
-        include_lowest=True,
-        duplicates="drop",
+        numeros, bins=bins, labels=escala.rotulos, right=False, duplicates="drop"
     )
     return faixas.astype(object).where(faixas.notna(), ROTULO_SEM_DADO)
 
@@ -955,6 +1032,8 @@ def deck(
     destacado: str | None = None,
     metodo: str = "NATURAL",
     cortes_fixos: list[float] | None = None,
+    nomes_fixos: tuple[str, ...] | None = None,
+    casas_regua: int = 2,
     detalhes: list[tuple[str, pd.Series, str, int]] | None = None,
     faixa_realcada: str | None = None,
 ):
@@ -983,6 +1062,8 @@ def deck(
         rampa,
         metodo=metodo,
         cortes_fixos=cortes_fixos,
+        nomes_fixos=nomes_fixos,
+        casas_regua=casas_regua,
         decimais=decimais,
     )
     # Faixa que não existe nesta escala não apaga ninguém: o rótulo guardado

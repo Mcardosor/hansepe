@@ -8,6 +8,8 @@ recortes onde metade dos municípios tem zero.
 
 from __future__ import annotations
 
+import re
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -752,3 +754,93 @@ def test_o_atlas_de_fonte_cobre_o_texto_que_a_camada_desenha() -> None:
         for linha in camada_json["data"]:
             faltando = [c for c in linha["texto"] if c not in conjunto]
             assert not faltando, f"{linha['texto']!r} perde {faltando} no atlas"
+
+
+#: As métricas que têm régua oficial, com cortes e nomes de classe.
+COM_REGUA = tuple(m for m in tb.CORTES_FIXOS if tb.tem_regua_oficial(m))
+
+
+def _escala_oficial(metrica: str, valores) -> mapa.Escala:
+    return mapa.escala(
+        pd.Series(valores),
+        ["#111"] * 7,
+        metodo="FIXA",
+        cortes_fixos=list(tb.CORTES_FIXOS[metrica]),
+        nomes_fixos=tb.NOMES_FIXOS[metrica],
+        casas_regua=tb.casas_regua(metrica),
+    )
+
+
+@pytest.mark.parametrize("metrica", COM_REGUA)
+def test_o_valor_em_cima_do_corte_sobe_de_classe(metrica: str) -> None:
+    """O Ministério fecha as classes à esquerda: "Baixo < 2,00", "Médio 2,00 a
+    9,99". Logo 2,00 é Médio.
+
+    O mapa classificava com o intervalo `(a, b]` que o pandas usa por padrão,
+    e 2,00 caía em Baixo — uma classe abaixo do que o manual manda, nos quatro
+    limites de cada régua. Pior: o card ao lado do mapa já usava a regra certa,
+    então os dois diziam coisas diferentes do mesmo município.
+    """
+    nomes = tb.NOMES_FIXOS[metrica]
+    inicios = [float(c) for c in tb.CORTES_FIXOS[metrica][1 : len(nomes)]]
+    valores = [v for c in inicios for v in (c - 0.01, c, c + 0.01)]
+    escala = _escala_oficial(metrica, valores)
+    classes = mapa.classificar(pd.Series(valores), escala)
+
+    for valor, faixa in zip(valores, classes, strict=True):
+        assert faixa in escala.rotulos, f"{valor} ficou sem classe"
+        assert nomes[escala.rotulos.index(faixa)] == tb.classe_de(metrica, valor), (
+            f"{metrica} em {valor}: o mapa discorda do card"
+        )
+
+
+@pytest.mark.parametrize("metrica", COM_REGUA)
+def test_a_regua_oficial_nao_encolhe_com_os_dados(metrica: str) -> None:
+    """Régua fixa que depende da série não é régua fixa.
+
+    A última classe era derivada do máximo observado, e só existia quando
+    algum valor passava do teto declarado. Onde não passava — macrorregiões de
+    2025, nas duas taxas de detecção — a legenda dizia "≥ 20 Muito alto" e a
+    classe Hiperendêmico desaparecia. Quem olhasse concluiria que o estado não
+    tem a classe, quando o que faltava era ela ser desenhada vazia.
+    """
+    nomes = tb.NOMES_FIXOS[metrica]
+    rente_ao_chao = _escala_oficial(metrica, [0.0, 0.1])
+    assert len(rente_ao_chao.rotulos) == len(nomes)
+    # E com um valor acima de qualquer teto declarado, nem uma classe a mais.
+    assert len(_escala_oficial(metrica, [0.0, 10_000.0]).rotulos) == len(nomes)
+
+
+@pytest.mark.parametrize("metrica", COM_REGUA)
+def test_nenhum_numero_e_fim_de_uma_faixa_e_comeco_de_outra(metrica: str) -> None:
+    """"O 0,5 está presente em 2 legendas" — a revisão da equipe parceira.
+
+    Escrita como "0,5 a 2,5" e "2,5 a 5", a faixa deixa o 2,5 sendo fim de uma
+    e começo da outra, e não se sabe a qual pertence. O boletim fecha o
+    intervalo: "0,50 a 2,49".
+
+    O número repetido entre "< 2,00" e "2,00 a 9,99" não entra na conta — ali
+    o `<` já diz que não pertence à primeira. O que não pode é um mesmo número
+    ser limite **de chegada** de uma faixa e **de partida** de outra.
+    """
+    rotulos = _escala_oficial(metrica, [0.0, 10_000.0]).rotulos
+    partidas, chegadas = set(), set()
+    for rotulo in rotulos:
+        if faixa := re.fullmatch(r"(\S+) a (\S+)", rotulo):
+            partidas.add(faixa[1])
+            chegadas.add(faixa[2])
+        elif aberta := re.fullmatch(r"≥ (\S+)", rotulo):
+            partidas.add(aberta[1])
+
+    repetidos = partidas & chegadas
+    assert not repetidos, f"{metrica}: {sorted(repetidos)} em {rotulos}"
+
+
+@pytest.mark.parametrize("metrica", COM_REGUA)
+def test_o_municipio_mais_alto_do_ano_tem_classe(metrica: str) -> None:
+    """Com a classe fechada à esquerda e o último limite no máximo observado,
+    o próprio máximo ficava de fora e saía como "sem dado" — o município de
+    maior detecção do ano desapareceria do mapa."""
+    valores = [0.0, 3.0, 9_999.9]
+    classes = mapa.classificar(pd.Series(valores), _escala_oficial(metrica, valores))
+    assert mapa.ROTULO_SEM_DADO not in list(classes)

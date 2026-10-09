@@ -284,6 +284,29 @@ CORTES_FIXOS = {
 }
 
 
+#: Com quantas casas decimais o boletim escreve os limites de cada régua.
+#:
+#: Não é a precisão do dado nem a dos cortes: é como o documento redige o
+#: limite superior de cada classe. As taxas de detecção vão a duas casas
+#: ("Médio 2,00 a 9,99"), os indicadores de qualidade a uma ("Regular 75 a
+#: 89,9%"). A legenda do mapa usa isto para reproduzir a citação — sem ele,
+#: a classe que vai de 2 até antes de 10 se escreveria "2 a 10" e o 10
+#: apareceria em duas faixas.
+CASAS_REGUA = {
+    "incid": 2,
+    "taxa_det_0_14": 2,
+    "prop_grau2_pct": 2,
+    "cura_pct": 1,
+    "contatos_pct": 1,
+    "gif_avaliado_pct": 1,
+    "abandono_pct": 1,
+}
+
+
+def casas_regua(metrica: str) -> int:
+    return CASAS_REGUA.get(metrica, 2)
+
+
 #: Nome de cada classe da escala fixa, na ordem dos cortes — é como o
 #: Ministério chama as faixas, e é o que a legenda mostra ao lado do número.
 #: No masculino, como o boletim escreve — a concordância é com
