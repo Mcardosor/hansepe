@@ -322,3 +322,28 @@ def test_a_base_do_calculo_mostra_a_completude_do_campo() -> None:
     assert re.search(r"\d[\d.]* de \d[\d.]* casos com o campo preenchido \(\d+,\d%\)", texto), (
         "a caixa deveria trazer preenchidos, total e o percentual"
     )
+
+
+def test_o_gif_avaliado_nao_repete_a_regua_ao_lado_do_grafico() -> None:
+    """A caixa saiu da tela, a citação do boletim ficou no lugar.
+
+    "Eu tiraria a mensagem que está abaixo do % grau de incapacidade. Ela não
+    traz nada importante" — revisão de outubro. Não traz mesmo: o card do
+    mesmo indicador já termina em "Regular", e a caixa ao lado só reexplicava
+    de onde veio a palavra.
+
+    O que não pode sumir é a régua no pacote da doença. Ela é transcrição do
+    documento, o teste de paridade a guarda letra por letra, e é dela que sai
+    a classe que o card exibe. Apagar o texto para esconder a caixa teria
+    levado as três coisas juntas.
+    """
+    at = _rodar()
+    _conferir(at, "sem o quadro do GIF avaliado")
+
+    texto = " ".join(m.value for m in at.markdown)
+    assert "% Grau de incapacidade" not in texto, "o quadro voltou à tela"
+    # A régua segue no pacote, e o card segue classificando por ela.
+    assert pack.texto_parametros("gif_avaliado_pct") is not None
+    assert pack.classe_de("gif_avaliado_pct", 82.66) == "Regular"
+    # E os outros indicadores de qualidade continuam com o quadro deles.
+    assert "% Cura" in texto and "% Abandono" in texto

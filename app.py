@@ -377,6 +377,23 @@ if (meses := _meses_com_dado(nav.ano)) < 12:
     )
 
 
+#: Indicadores cujo quadro de parâmetros não vai à tela.
+#:
+#: A régua continua no pacote da doença: ela é citação do boletim, e o teste
+#: de paridade prende a transcrição letra por letra. O que sai é a repetição
+#: dela ao lado do gráfico, quando o card do mesmo indicador já entrega o
+#: veredito — "Proporção de GIF avaliado no diagnóstico · 82,66 · PE • 2024 ·
+#: 2.040 de 2.468 · **Regular**". A caixa ao lado só reexplica de onde saiu a
+#: palavra que já está na tela.
+#:
+#: Pedido da revisão de outubro, e é o mesmo argumento que já tinha tirado a
+#: régua de baixo dos cards da seção de qualidade. Os outros quatro
+#: indicadores estão na mesma situação e continuam com quadro — mexer neles
+#: desfaria o pedido da reunião de setembro, que é de quem pediu para a régua
+#: ficar junto do número.
+SEM_QUADRO_NA_TELA = frozenset({"gif_avaliado_pct"})
+
+
 def _quadro(metrica: str) -> None:
     """O quadro de parâmetros do boletim, quando a métrica tem um.
 
@@ -384,6 +401,8 @@ def _quadro(metrica: str) -> None:
      — a régua precisa estar junto do número, não só na legenda
     do mapa.
     """
+    if metrica in SEM_QUADRO_NA_TELA:
+        return
     if texto := pack.texto_parametros(metrica):
         titulo, linhas = texto
         st.markdown(
