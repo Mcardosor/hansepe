@@ -222,3 +222,78 @@ def test_navegacao_consulta_o_registro() -> None:
     assert not nav.tem_recortes_de_saude
     with pytest.raises(ValueError, match="recorte de saúde"):
         nav.definir_recorte("MACRO")
+
+
+# ---------------------------------------------------------------------------
+# Forma clínica no mapa
+# ---------------------------------------------------------------------------
+
+
+def test_a_chave_da_metrica_de_forma_e_a_mesma_nos_dois_lados() -> None:
+    """A constante é repetida de propósito, e por isso precisa de guarda.
+
+    A camada de dados não importa pacote de doença, e o pacote não conhece o
+    leitor. Se as duas divergirem, o mapa não estoura: cai no caminho
+    genérico e pinta outra coisa, em silêncio.
+    """
+    from src.data import leitura
+    from src.doencas import hanseniase as pack
+
+    assert leitura.METRICA_FORMA == pack.METRICA_FORMA
+
+
+def test_casos_por_forma_somam_o_que_a_tabela_agregada_diz() -> None:
+    """O mapa por forma tem de bater com o gráfico de composição.
+
+    São a mesma variável lida de dois jeitos: a composição soma o estado, o
+    mapa reparte por município. Divergir aqui seria o painel discordar de si
+    mesmo em duas telas.
+    """
+    from src.data import leitura
+    from src.data.escopo import Escopo
+    from src.doencas import hanseniase as pack
+
+    esc = Escopo(pack.DOENCA, 2024, "UF", uf="PE")
+    composicao = leitura.composicao(esc, "FORMACLINI").set_index("categoria")["n"]
+
+    for codigo in pack.FORMAS_CLINICAS:
+        no_mapa = leitura.valores_por_geografia(esc, pack.METRICA_FORMA, forma=codigo)
+        assert no_mapa.sum() == composicao.get(codigo, 0), pack.rotulo_forma(codigo)
+
+
+def test_municipio_sem_a_forma_vale_zero_e_nao_sem_dado() -> None:
+    """Zero é informação; "sem dado" é a falta dela.
+
+    A tabela de variáveis só lista quem notificou — em 2024 são 152 dos 185
+    municípios de PE. Usando o universo dela, os 33 restantes sairiam cinza,
+    como se nada se soubesse deles. Sabe-se: não houve caso.
+    """
+    from src.data import leitura
+    from src.data.escopo import Escopo
+    from src.doencas import hanseniase as pack
+
+    valores = leitura.valores_por_geografia(
+        Escopo(pack.DOENCA, 2024, "UF", uf="PE"), pack.METRICA_FORMA, forma="2"
+    )
+    assert len(valores) == 185, "o mapa pinta os 185 municípios"
+    assert not valores.isna().any(), "município sem a forma virou sem dado"
+    assert (valores == 0).any(), "nenhum município zerado é improvável"
+
+
+@pytest.mark.parametrize("nivel", ["macro", "micro"])
+def test_a_soma_por_regiao_nao_perde_nem_inventa_caso(nivel: str) -> None:
+    """Contagem se soma; é só o que a agregação por região faz aqui.
+
+    Taxa precisa de denominador e passa pela agregação geral. Casos por forma
+    não: somar os municípios da região é a conta inteira.
+    """
+    from src.data import leitura
+    from src.data.escopo import Escopo
+    from src.doencas import hanseniase as pack
+
+    esc = Escopo(pack.DOENCA, 2024, "UF", uf="PE")
+    por_municipio = leitura.valores_por_geografia(esc, pack.METRICA_FORMA, forma="3")
+    por_regiao = leitura.valores_por_regiao(esc, pack.METRICA_FORMA, nivel, forma="3")
+
+    assert por_regiao.sum() == por_municipio.sum()
+    assert len(por_regiao) == (4 if nivel == "macro" else 12)

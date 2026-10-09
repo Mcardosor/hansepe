@@ -301,7 +301,81 @@ _RAZAO_EM_INCIDENCE: dict[str, tuple[str, str]] = {}
 #: camada de dados consiga exibir o percentual por engano.
 MINIMO_PARA_PERCENTUAL = 5
 
-def valores_por_geografia(esc: Escopo, metrica: str) -> pd.Series:
+#: Variável do SINAN que guarda a forma clínica.
+VARIAVEL_FORMA = "FORMACLINI"
+
+#: Chave da métrica que o mapa pinta por forma clínica.
+#:
+#: Repetida aqui e em `hanseniase.METRICA_FORMA` de propósito: esta camada
+#: não importa pacote de doença, e o pacote não conhece o leitor. Um teste
+#: prende as duas; divergir faria o mapa cair em silêncio no caminho
+#: genérico e pintar outra coisa.
+METRICA_FORMA = "casos_forma"
+
+
+def casos_por_forma(esc: Escopo, forma: str) -> pd.Series:
+    """Casos de uma forma clínica em cada geografia, para o mapa.
+
+    Vem do `sinan_landing`, e não de `incidence`: a forma clínica só existe
+    na tabela das variáveis da ficha. Isso tem duas consequências que o
+    painel precisa dizer em voz alta.
+
+    São **casos**, não casos novos. A tabela não cruza forma clínica com modo
+    de entrada, então entram todas as entradas no registro — o mesmo aviso
+    que já vale para as distribuições (paridade §1.1).
+
+    E município sem nenhum caso da forma recebe **zero**, não ausente: ele
+    tem dado, e o dado é nenhum caso. Deixar ausente pintaria de cinza
+    município que notificou dez casos de outra forma, como se nada se
+    soubesse dele.
+    """
+    desce_para_municipio = esc.nivel in ("UF", "MUN")
+    particao = "MUN" if desce_para_municipio else "UF"
+    fonte = caminho(
+        "sinan_landing",
+        doenca=config.cod_landing(esc.doenca),
+        nivel=particao,
+        ano=esc.ano,
+    )
+    sql = f"""
+        SELECT geo_id, sum(n) AS valor
+        FROM read_parquet('{fonte}', hive_partitioning=true)
+        WHERE variavel = ? AND sexo = 'TOTAL' AND trim(valor) = ?
+    """
+    params: list = [VARIAVEL_FORMA, str(forma)]
+    if desce_para_municipio and esc.uf:
+        sql += " AND uf = ?"
+        params.append(esc.uf)
+    sql += " GROUP BY 1"
+    dados = conectar().execute(sql, params).fetchdf()
+    serie = dados.set_index("geo_id")["valor"].astype(float)
+
+    # O universo é o de `incidence`, o mesmo das outras métricas do mapa, e
+    # não o da própria tabela de variáveis.
+    #
+    # Em 2024 o `sinan_landing` lista 152 dos 185 municípios de PE: os 33 que
+    # faltam não notificaram nada no ano. Usando o universo de lá, eles
+    # sairiam cinza, como "sem dado" — e sem dado não é o caso. Eles têm
+    # dado, e o dado é zero. Com o universo de `incidence` o mapa pinta os
+    # 185, como pinta para casos e para curas.
+    geral = caminho(
+        "incidence",
+        doenca=config.cod_agregado(esc.doenca),
+        nivel="MUN" if desce_para_municipio else "UF",
+        ano=esc.ano,
+    )
+    chave = "cod_mun6" if desce_para_municipio else "uf"
+    onde = " WHERE uf = ?" if desce_para_municipio and esc.uf else ""
+    universo = conectar().execute(
+        f"SELECT DISTINCT {chave} FROM read_parquet('{geral}', hive_partitioning=true){onde}",
+        [esc.uf] if onde else [],
+    ).fetchdf()[chave]
+    return serie.reindex(universo).fillna(0.0)
+
+
+def valores_por_geografia(
+    esc: Escopo, metrica: str, forma: str | None = None
+) -> pd.Series:
     """Valor da métrica para cada geografia dentro do escopo, para o mapa.
 
     O nível do ``Escopo`` diz o que está **selecionado**; o mapa desenha um
@@ -311,6 +385,8 @@ def valores_por_geografia(esc: Escopo, metrica: str) -> pd.Series:
     6 dígitos no de município.
     """
     metrica = str(metrica or "incid")
+    if metrica == METRICA_FORMA:
+        return casos_por_forma(esc, forma or "1")
     desce_para_municipio = esc.nivel in ("UF", "MUN")
 
     if desce_para_municipio:
@@ -415,7 +491,8 @@ def componentes_municipais(esc: Escopo) -> pd.DataFrame:
 
 
 def valores_por_regiao(
-    esc: Escopo, metrica: str, nivel: str, macro: str | None = None
+    esc: Escopo, metrica: str, nivel: str, macro: str | None = None,
+    forma: str | None = None,
 ) -> pd.Series:
     """Valor da métrica por macrorregião ou região de saúde da UF do escopo.
 
@@ -425,9 +502,22 @@ def valores_por_regiao(
     """
     from . import recortes
 
-    valores = recortes.agregar(
-        componentes_municipais(esc), metrica, nivel, uf=esc.uf or recortes.UF
-    )
+    if metrica == METRICA_FORMA:
+        # Soma direta, sem passar por `componentes_municipais`: contagem de
+        # casos não se recalcula a partir de componentes, só se soma. A
+        # função geral existe para as taxas, que precisam do denominador.
+        por_municipio = casos_por_forma(esc, forma or "1").rename("valor")
+        tabela = recortes.lookup(esc.uf or recortes.UF).set_index("cod_mun6")
+        coluna = "macro" if str(nivel).lower().startswith("mac") else "micro"
+        juncao = por_municipio.to_frame().join(tabela[[coluna]], how="inner")
+        valores = (
+            juncao.groupby(coluna)["valor"].sum()
+            if not juncao.empty else pd.Series(dtype=float)
+        )
+    else:
+        valores = recortes.agregar(
+            componentes_municipais(esc), metrica, nivel, uf=esc.uf or recortes.UF
+        )
     if macro and str(nivel).lower().startswith("mic") and not valores.empty:
         dentro = {recortes._chave(m) for m in recortes.micros(macro, uf=esc.uf or recortes.UF)}
         valores = valores[[recortes._chave(i) in dentro for i in valores.index]]
@@ -463,7 +553,7 @@ def serie_anual(esc: Escopo, metrica: str = "casos") -> pd.DataFrame:
 
 def ranking(
     esc: Escopo, metrica: str, top_n: int = 15, recorte: str = "MUN",
-    macro: str | None = None,
+    macro: str | None = None, forma: str | None = None,
 ) -> pd.DataFrame:
     """As ``top_n`` maiores geografias do nível abaixo do escopo.
 
@@ -485,11 +575,12 @@ def ranking(
     # cores, que saem da escala do mapa, deixavam de casar.
     if recorte in ("MACRO", "MICRO") and esc.nivel != "BR":
         valores = valores_por_regiao(
-            esc, metrica, "macro" if recorte == "MACRO" else "micro", macro=macro
+            esc, metrica, "macro" if recorte == "MACRO" else "micro",
+            macro=macro, forma=forma,
         )
         nomes = {chave: chave for chave in valores.index}
     else:
-        valores = valores_por_geografia(esc, metrica)
+        valores = valores_por_geografia(esc, metrica, forma=forma)
         if esc.nivel == "BR":
             nomes = {sigla: sigla for sigla in valores.index}
         else:

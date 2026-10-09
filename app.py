@@ -165,14 +165,35 @@ def _geojson(recorte, mun, detalhe, micro, macro):
     return mapa.geometrias_geojson(_camada(recorte, mun, detalhe, micro, macro))
 
 
+#: A forma clínica mostrada quando a métrica é a de forma. Primeira da lista
+#: por padrão — indeterminada, que é a inicial no dicionário do SINAN.
+FORMA_PADRAO = pack.FORMAS_CLINICAS[0]
+
+
+def _metrica_atual() -> str:
+    """A métrica escolhida, lida do widget e não de `nav`.
+
+    O card acima do seletor já ensinou isto: ler no ponto do widget devolve o
+    valor anterior no primeiro clique. Ver docs/manutencao.md.
+    """
+    return st.session_state.get("metrica_sel") or nav.metrica
+
+
+def _forma_atual() -> str:
+    return st.session_state.get("forma_sel") or FORMA_PADRAO
+
+
 @st.cache_data(ttl=TTL_DADOS, show_spinner=False)
-def _valores_mapa(ano: int, metrica: str, recorte: str, macro: str | None) -> pd.Series:
+def _valores_mapa(
+    ano: int, metrica: str, recorte: str, macro: str | None, forma: str | None = None
+) -> pd.Series:
     escopo = Escopo(pack.DOENCA, ano, "UF", uf=UF_FIXA)
     if recorte in ("MACRO", "MICRO"):
         return leitura.valores_por_regiao(
-            escopo, metrica, "macro" if recorte == "MACRO" else "micro", macro=macro
+            escopo, metrica, "macro" if recorte == "MACRO" else "micro",
+            macro=macro, forma=forma,
         )
-    return leitura.valores_por_geografia(escopo, metrica)
+    return leitura.valores_por_geografia(escopo, metrica, forma=forma)
 
 
 #: Linhas do tooltip do mapa, como no painel de origem: casos, curas e
@@ -190,9 +211,11 @@ def _detalhes_tooltip(ano: int, metrica: str, recorte: str, macro: str | None):
 
 
 @st.cache_data(ttl=TTL_DADOS, show_spinner=False)
-def _ranking(ano: int, metrica: str, top_n: int, recorte: str, macro: str | None):
+def _ranking(ano: int, metrica: str, top_n: int, recorte: str, macro: str | None,
+             forma: str | None = None):
     return leitura.ranking(
-        Escopo(pack.DOENCA, ano, "UF", uf=UF_FIXA), metrica, top_n, recorte, macro=macro
+        Escopo(pack.DOENCA, ano, "UF", uf=UF_FIXA), metrica, top_n, recorte,
+        macro=macro, forma=forma,
     )
 
 
@@ -580,6 +603,24 @@ with resiliencia.painel("Controles"), st.container(border=True, key="cartao-cont
             on_change=_ao_mudar_metrica,
             help="Define o que o mapa pinta e o que o ranking ordena.",
         )
+        # O seletor das formas mora **dentro** da coluna da métrica, logo
+        # abaixo das pílulas, e só existe quando a métrica é a da forma
+        # clínica. Dentro porque ele qualifica a métrica, não a tela; e só
+        # quando vale porque a lição do botão de endemicidade é essa — opção
+        # visível onde não se aplica promete o que não entrega.
+        if _metrica_atual() == pack.METRICA_FORMA:
+            st.segmented_control(
+                "Forma clínica",
+                pack.FORMAS_CLINICAS,
+                format_func=pack.rotulo_forma,
+                default=_forma_atual(),
+                key="forma_sel",
+                help=(
+                    "O mapa passa a contar os casos da forma escolhida. São "
+                    "**casos**, não casos novos: a tabela de variáveis da "
+                    "ficha não cruza forma clínica com modo de entrada."
+                ),
+            )
     with col_recorte:
         # **Sem `key`**: o clique no mapa também move o recorte, e um widget
         # dono do valor entraria em laço com a navegação.
@@ -646,7 +687,9 @@ esquerda, direita = st.columns([5, 6], gap="medium")
 with esquerda:
     with resiliencia.painel("Mapa"), st.container(border=True, key="cartao-mapa"):
         recorte_mapa = nav.recorte
-        serie_mapa = _valores_mapa(nav.ano, nav.metrica, recorte_mapa, nav.macro)
+        serie_mapa = _valores_mapa(
+            nav.ano, nav.metrica, recorte_mapa, nav.macro, _forma_atual()
+        )
         camada = _camada(recorte_mapa, nav.mun, nav.detalhe, nav.micro, nav.macro)
         chave = "regiao" if recorte_mapa in ("MACRO", "MICRO") else "cod_mun6"
 
@@ -881,9 +924,13 @@ with direita:
                 st.slider("Quantos exibir", 5, maximo, min(15, maximo), step=5, key=f"top_n_{nav.recorte}")
                 if maximo > 5 else maximo
             )
-            tabela = _ranking(nav.ano, nav.metrica, top_n, nav.recorte, nav.macro)
+            tabela = _ranking(
+                nav.ano, nav.metrica, top_n, nav.recorte, nav.macro, _forma_atual()
+            )
             escala_mapa = mapa.escala(
-                _valores_mapa(nav.ano, nav.metrica, nav.recorte, nav.macro),
+                _valores_mapa(
+                    nav.ano, nav.metrica, nav.recorte, nav.macro, _forma_atual()
+                ),
                 pack.rampa_mapa(nav.metrica),
                 metodo=classificacao,
                 cortes_fixos=pack.cortes_fixos(nav.metrica),

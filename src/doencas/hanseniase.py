@@ -40,6 +40,9 @@ CORES = {
     "abandono_pct": "#B45309",
     "contatos_pct": "#0E7490",
     "gif_avaliado_pct": "#0369A1",
+    # Forma clínica é achado clínico, como MB e grau II: entra no roxo da
+    # família, num tom próprio para não se confundir com nenhum dos dois.
+    "casos_forma": "#5B21B6",
 }
 
 ROTULOS = {
@@ -57,6 +60,7 @@ ROTULOS = {
     "abandono_pct": "Proporção de abandono",
     "contatos_pct": "Proporção de contatos examinados",
     "gif_avaliado_pct": "Proporção de GIF avaliado no diagnóstico",
+    "casos_forma": "Casos por forma clínica",
 }
 
 #: Os quadros de parâmetros do boletim, **palavra por palavra**, para irem
@@ -147,7 +151,34 @@ FRACAO_KPI = {
 }
 
 #: Métricas que o mapa e o ranking sabem desenhar — os cinco clicáveis.
-METRICAS_MAPA = ("incid", "taxa_det_0_14", "casos", "casos_0_14", "cura")
+METRICAS_MAPA = (
+    "incid", "taxa_det_0_14", "casos", "casos_0_14", "cura", "casos_forma",
+)
+
+#: A métrica que pinta o mapa por forma clínica, com a forma escolhida à
+#: parte. Pedido da equipe parceira: ver onde cada tipo de hanseníase se
+#: concentra.
+#:
+#: É métrica própria, e não um filtro geral, porque a forma clínica **só
+#: cruza com território**. As 23 variáveis da tabela agregada são tabuladas
+#: cada uma sozinha: não há detecção por forma, nem cura por forma, nem forma
+#: entre os casos novos. Um filtro ao lado dos controles pareceria recortar o
+#: painel inteiro e recortaria quase nada — foi exatamente o defeito que a
+#: equipe apontou no botão de endemicidade, que prometia valer para todas as
+#: métricas.
+#:
+#: Sendo métrica, o seletor das formas só aparece quando ela é escolhida, e o
+#: que ela promete é o que entrega.
+METRICA_FORMA = "casos_forma"
+
+#: As cinco formas, na ordem do dicionário do SINAN. O rótulo sai de
+#: `ROTULOS_VALORES`, que já é a fonte usada no gráfico de composição — duas
+#: listas do mesmo dicionário divergiriam.
+FORMAS_CLINICAS = ("1", "2", "3", "4", "5")
+
+
+def rotulo_forma(codigo: str) -> str:
+    return ROTULOS_VALORES["FORMACLINI"].get(str(codigo), str(codigo))
 
 #: Métricas em que uma queda é boa.
 #:
@@ -197,6 +228,7 @@ PALETA_MAPA = {
         "#F5A878", "#EF8450", "#E56028", "#D04010",
         "#B82E08", "#921800", "#5E0C00",
     ),
+    "casos_forma": _ROXOS,
 }
 
 
@@ -217,6 +249,7 @@ ROTULOS_CURTOS = {
     "cura_pct": "Cura",
     "abandono_pct": "Abandono",
     "contatos_pct": "Contatos examinados",
+    "casos_forma": "Forma clínica",
     "gif_avaliado_pct": "GIF avaliado",
 }
 

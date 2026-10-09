@@ -347,3 +347,60 @@ def test_o_gif_avaliado_nao_repete_a_regua_ao_lado_do_grafico() -> None:
     assert pack.classe_de("gif_avaliado_pct", 82.66) == "Regular"
     # E os outros indicadores de qualidade continuam com o quadro deles.
     assert "% Cura" in texto and "% Abandono" in texto
+
+
+def _escolher_metrica(at: AppTest, metrica: str) -> AppTest:
+    """Clica na pílula, em vez de plantar o valor no estado.
+
+    Plantar não funciona: a métrica é sincronizada a partir da navegação na
+    primeira execução, e o preset é sobrescrito antes de qualquer leitura.
+    Clicar é o que o usuário faz, e é o caminho que precisa estar certo.
+    """
+    seletor = next(s for s in at.segmented_control if s.label == "Métrica")
+    return seletor.set_value(metrica).run()
+
+
+def test_o_seletor_de_forma_so_aparece_na_metrica_de_forma() -> None:
+    """A lição do botão de endemicidade, aplicada antes de errar de novo.
+
+    A forma clínica só cruza com território: não existe detecção por forma,
+    nem cura por forma, nem forma entre os casos novos. Um seletor sempre
+    visível ao lado dos controles pareceria recortar o painel inteiro e
+    recortaria quase nada — foi exatamente o que a equipe parceira apontou no
+    botão que prometia endemicidade em todas as métricas.
+
+    Sendo métrica, o seletor aparece quando ela é escolhida e some quando
+    não é.
+    """
+    at = _rodar()
+    _conferir(at, "sem a métrica de forma")
+    rotulos = [s.label for s in at.segmented_control]
+    assert "Métrica" in rotulos, "o seletor de métrica sumiu — teste inútil"
+    assert "Forma clínica" not in rotulos, (
+        "o seletor apareceu sem a métrica que ele qualifica"
+    )
+
+    at = _escolher_metrica(at, pack.METRICA_FORMA)
+    _conferir(at, "com a métrica de forma")
+    seletor = next(
+        (s for s in at.segmented_control if s.label == "Forma clínica"), None
+    )
+    assert seletor is not None, "a métrica foi escolhida e o seletor não apareceu"
+    assert list(seletor.options) == [
+        pack.rotulo_forma(c) for c in pack.FORMAS_CLINICAS
+    ]
+
+
+def test_o_mapa_por_forma_clinica_pinta() -> None:
+    """A métrica entrou no seletor; falta ela desenhar alguma coisa.
+
+    Dimorfa é a forma mais frequente — 1.051 casos em 2024, em 96 dos 185
+    municípios. Se houvesse recorte vazio, não seria nesta.
+    """
+    at = _escolher_metrica(_rodar(), pack.METRICA_FORMA)
+    seletor = next(s for s in at.segmented_control if s.label == "Forma clínica")
+    at = seletor.set_value("3").run()
+    _conferir(at, "mapa por forma dimorfa")
+
+    texto = " ".join(m.value for m in at.markdown)
+    assert "Casos por forma clínica" in texto, "a legenda não nomeia a métrica"
