@@ -844,3 +844,65 @@ def test_o_municipio_mais_alto_do_ano_tem_classe(metrica: str) -> None:
     valores = [0.0, 3.0, 9_999.9]
     classes = mapa.classificar(pd.Series(valores), _escala_oficial(metrica, valores))
     assert mapa.ROTULO_SEM_DADO not in list(classes)
+
+
+@pytest.mark.parametrize("metodo", mapa.CLASSIFICACOES)
+def test_valores_que_se_escrevem_iguais_nao_quebram_o_mapa(metodo: str) -> None:
+    """Duas regiões com a mesma taxa arredondada derrubavam o mapa inteiro.
+
+    O Agreste tem duas regiões de saúde. Em 2016 elas tinham 2,7765 e 2,7878
+    por 100 mil, que em uma casa decimal são a mesma coisa. O quintil montava
+    cinco classes rotuladas "2,8 a 2,8", o `cut` recusa rótulos repetidos e o
+    mapa caía com `ValueError`. Onze combinações de ano, métrica e recorte
+    caíam assim, todas com dado real — nenhuma coberta.
+
+    Deixar o `cut` aceitar o repetido não serviria: o dicionário de cores é
+    indexado pelo rótulo e já colapsava as chaves, então a legenda exibiria a
+    mesma faixa cinco vezes. Classe que não se distingue na legenda não é
+    classe, e o lugar de resolver é no corte.
+    """
+    valores = pd.Series([2.7765, 2.7878])
+    escala = mapa.escala(
+        valores,
+        ["#111"] * 7,
+        metodo=metodo,
+        cortes_fixos=list(tb.CORTES_FIXOS["taxa_det_0_14"]),
+        nomes_fixos=tb.NOMES_FIXOS["taxa_det_0_14"],
+        casas_regua=tb.casas_regua("taxa_det_0_14"),
+        decimais=1,
+    )
+    classes = mapa.classificar(valores, escala)
+
+    assert len(escala.rotulos) == len(set(escala.rotulos)), escala.rotulos
+    assert set(escala.rotulos) <= set(escala.cores), "faixa sem cor na legenda"
+    assert mapa.ROTULO_SEM_DADO not in list(classes)
+
+
+@pytest.mark.parametrize("metodo", mapa.CLASSIFICACOES)
+@pytest.mark.parametrize(
+    "valores",
+    [
+        [1.0],                        # um só
+        [0.0, 0.0, 0.0, 0.0],         # tudo zero
+        [0.0, 0.0, 0.0, 999.0],       # um fora da curva
+        [1.0, 1.0001, 1.0002],        # separados só na quarta casa
+        [-0.0, 0.04, 0.06],           # arredondam para 0,0 e 0,1
+    ],
+    ids=["um", "zeros", "cauda", "quase_iguais", "redondos"],
+)
+def test_a_escala_sobrevive_a_series_degeneradas(metodo: str, valores) -> None:
+    """Recortes pequenos produzem séries que nenhum dado real de UF produz.
+
+    Uma macrorregião tem quatro valores; uma região de saúde dentro de uma
+    macro pode ter dois. É aí que a classificação encontra os casos que
+    derrubam: todos iguais, quase iguais, um só.
+    """
+    serie = pd.Series(valores)
+    escala = mapa.escala(serie, ["#111"] * 7, metodo=metodo,
+                         cortes_fixos=[0, 2, 10], decimais=1)
+    classes = mapa.classificar(serie, escala)
+
+    assert len(escala.rotulos) == len(set(escala.rotulos)), escala.rotulos
+    assert set(escala.rotulos) <= set(escala.cores)
+    assert len(classes) == len(serie)
+    assert mapa.ROTULO_SEM_DADO not in list(classes), "valor existente ficou sem classe"

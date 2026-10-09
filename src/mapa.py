@@ -152,30 +152,11 @@ def escala_natural(
             ] + cortes[-1:]
     else:
         cortes = _quebras_naturais(limpos.to_numpy(), classes)
-    if len(cortes) < 2:
-        unico = float(cortes[0])
-        rotulo = _formatar(unico, decimais)
-        return Escala(
-            cortes=[unico, unico],
-            rotulos=[rotulo],
-            cores={rotulo: rampa[len(rampa) // 2], ROTULO_SEM_DADO: SEM_DADO},
-        )
-
-    # A rampa tem 7 tons; com menos classes, pega tons distribuídos nela.
-    usadas = len(cortes) - 1
-    indices = np.linspace(0, len(rampa) - 1, usadas).round().astype(int)
-    tons = [rampa[i] for i in indices]
-
-    rotulos = [
-        f"{_formatar(cortes[i], decimais)} a {_formatar(cortes[i + 1], decimais)}"
-        for i in range(usadas)
-    ]
-    # `strict=True` prende a invariante: rótulos e tons saem os dois de
-    # `usadas`, e se um dia divergirem, classes sumiriam da legenda sem
-    # erro — o mapa continuaria colorido e a legenda incompleta.
-    cores = dict(zip(rotulos, tons, strict=True))
-    cores[ROTULO_SEM_DADO] = SEM_DADO
-    return Escala(cortes=[float(c) for c in cortes], rotulos=rotulos, cores=cores)
+    # O mesmo montador dos outros dois métodos: os três diferem em **onde
+    # cortar**, e rótulo e cor se montam igual. Enquanto isto estava
+    # duplicado aqui, a proteção contra cortes que se escrevem iguais valia
+    # para quartis e escala fixa e não valia para quebras naturais.
+    return _montar(cortes, rampa, decimais)
 
 
 #: Como o mapa reparte os valores em classes de cor.
@@ -216,6 +197,25 @@ def _montar(
     corte declarado com o máximo observado do ano, que é só o teto do `cut`.
     """
     cortes = [float(c) for c in cortes]
+    # Cortes que se **escrevem** iguais viram um só.
+    #
+    # O Agreste tem duas regiões de saúde. Em 2016 elas tinham 2,7765 e
+    # 2,7878 casos de 0 a 14 anos por 100 mil, e em uma casa decimal as duas
+    # são "2,8". O quintil montava cinco classes rotuladas "2,8 a 2,8", e o
+    # `cut` recusa rótulos repetidos: o mapa caía com `ValueError`. Onze
+    # combinações de ano, métrica e recorte caíam assim, e todas com dado
+    # real.
+    #
+    # Não bastaria deixar passar. O dicionário de cores é indexado pelo
+    # rótulo, então rótulos repetidos já colapsavam lá — a escala saía com
+    # cinco classes e duas cores, e a legenda mostraria a mesma faixa cinco
+    # vezes. Classe que não se distingue na legenda não é classe.
+    if cortes:
+        distintos = [cortes[0]]
+        for corte in cortes[1:]:
+            if _formatar(corte, decimais) != _formatar(distintos[-1], decimais):
+                distintos.append(corte)
+        cortes = distintos
     if len(cortes) < 2:
         unico = cortes[0] if cortes else 0.0
         rotulo = _formatar(unico, decimais)
