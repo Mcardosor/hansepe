@@ -639,6 +639,36 @@ def piramide_completa(esc: Escopo, tipo: str = "CASOS") -> pd.DataFrame:
 CODIGOS_IGNORADO = frozenset({"9", "99", "999", "0"})
 
 
+#: Variável usada como universo do ano: o modo de entrada no registro.
+#:
+#: Todo registro entra por algum modo — caso novo, recidiva, transferência —,
+#: e por isso é o campo mais completo da tabela. Em 2024, em PE, soma 2.466,
+#: o mesmo que classificação operacional e UF atual, e é o maior entre os
+#: campos estruturais (`CS_GESTANT` chega a 2.468, dois a mais, o que é ruído
+#: da fonte e não um universo maior).
+VARIAVEL_UNIVERSO = "MODOENTR"
+
+
+def total_de_casos(esc: Escopo) -> int:
+    """Quantos casos o recorte tem ao todo, preenchidos ou não.
+
+    É o denominador da completude. As distribuições do painel saem de uma
+    tabela já agregada que **não traz os brancos** — forma clínica soma 2.337
+    em 2024 e classificação operacional soma 2.466, e a diferença são os
+    registros sem o campo, que simplesmente não têm linha. Sem um universo de
+    fora, não há como dizer quanto falta.
+
+    A equipe parceira pediu isso na revisão de outubro, e pela razão certa:
+    "o gestor vai conseguir avaliar a completude dessa informação no banco".
+    Tipo de alta, por exemplo, está em 65,8%.
+
+    Vale o mesmo aviso das distribuições: são todas as entradas no registro,
+    não só os casos novos — a tabela não cruza variável com modo de entrada.
+    """
+    bruto = variavel_sinan(esc, VARIAVEL_UNIVERSO)
+    return int(bruto["n"].sum()) if not bruto.empty else 0
+
+
 def composicao(
     esc: Escopo,
     variavel: str,

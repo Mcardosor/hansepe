@@ -150,9 +150,16 @@ FRACAO_KPI = {
 METRICAS_MAPA = ("incid", "taxa_det_0_14", "casos", "casos_0_14", "cura")
 
 #: Métricas em que uma queda é boa.
+#:
+#: `prop_mb_pct` entrou na revisão de outubro, a pedido da equipe parceira.
+#: Multibacilar e grau II medem a mesma coisa — gravidade no momento do
+#: diagnóstico, que é o que denuncia diagnóstico tardio —, e só o grau II
+#: estava aqui. A proporção de MB caindo aparecia em ocre, como se fosse
+#: piora.
 BOM_SE_CAI = frozenset(
     {"casos", "incid",
-     "casos_0_14", "taxa_det_0_14", "prop_grau2_pct", "abandono_pct"}
+     "casos_0_14", "taxa_det_0_14", "prop_mb_pct", "prop_grau2_pct",
+     "abandono_pct"}
 )
 
 #: Métricas exibidas com casas decimais.

@@ -235,6 +235,16 @@ def _serie_composicao(nivel: str, mun: str | None, macro, micro, variavel: str) 
 
 
 @st.cache_data(ttl=TTL_DADOS, show_spinner=False)
+def _universo(ano: int, nivel: str, mun: str | None, macro, micro) -> int:
+    """Casos do recorte ao todo — o denominador da completude dos campos.
+
+    Sem `variavel` na chave: é o mesmo número para as sete distribuições da
+    seção, e uma consulta serve todas.
+    """
+    return leitura.total_de_casos(_escopo(ano, nivel, mun, macro, micro))
+
+
+@st.cache_data(ttl=TTL_DADOS, show_spinner=False)
 def _composicao(ano: int, nivel: str, mun: str | None, macro, micro, variavel: str) -> pd.DataFrame:
     return leitura.composicao(
         _escopo(ano, nivel, mun, macro, micro),
@@ -435,17 +445,36 @@ def _com_calha(titulo: str, *, ajuda: str = ""):
     return st.columns(CALHA, vertical_alignment="top")
 
 
-def _calha_base(dados: pd.DataFrame, *, complemento: str = "") -> None:
+def _calha_base(
+    dados: pd.DataFrame, *, universo: int = 0, complemento: str = ""
+) -> None:
     """A calha das distribuições: quantos registros sustentam o gráfico.
 
     Distribuição não tem régua — o boletim não põe caixa nos Gráficos 5 a 9.
     O que falta ali é o denominador, que é justamente o que decide se o
     percentual quer dizer alguma coisa.
+
+    ``universo`` é o total de casos do recorte, e com ele a linha passa a
+    mostrar a completude do campo. Veio da revisão de outubro: ver só o número
+    preenchido levanta a pergunta "falta muito?" e não a responde. Com os dois
+    lado a lado, forma clínica aparece a 94,8% e tipo de alta a 65,8%, que é
+    uma diferença que muda o quanto se confia no gráfico.
+
+    Quando o campo soma mais que o universo a fração não é escrita. Acontece:
+    `CS_GESTANT` tem dois registros a mais que o modo de entrada em 2024, e
+    "2.468 de 2.466" seria pior que não dizer nada.
     """
     if dados.empty:
         return
     total = int(dados["total"].iloc[0])
-    linhas = [f"{ui.formatar_inteiro(total)} casos com o campo preenchido"]
+    if universo and total <= universo:
+        completude = ui.formatar_decimal(total / universo * 100, 1)
+        linhas = [
+            f"{ui.formatar_inteiro(total)} de {ui.formatar_inteiro(universo)} "
+            f"casos com o campo preenchido ({completude}%)"
+        ]
+    else:
+        linhas = [f"{ui.formatar_inteiro(total)} casos com o campo preenchido"]
     if complemento:
         linhas.append(complemento)
     st.markdown(
@@ -1074,6 +1103,7 @@ def _desenhar_topico(variavel: str, rotulo: str) -> None:
         # "casos novos" nos Gráficos 5 a 9 e nós não podemos. Paridade §1.1.
         _calha_base(
             dados,
+            universo=_universo(nav.ano, nav.nivel, nav.mun, nav.macro, nav.micro),
             complemento=(
                 "Base pequena demais para percentual"
                 if not dados.empty and dados["pct"].isna().all()

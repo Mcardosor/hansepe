@@ -98,3 +98,19 @@ def test_o_0_14_avisa_que_conta_todas_as_entradas(metrica: str) -> None:
     texto = hanseniase.DESCRICOES[metrica].lower()
     assert "entradas" in texto and "modo de entrada" in texto
     assert "diferença é pequena" not in texto
+
+
+def test_gravidade_no_diagnostico_cai_para_o_mesmo_lado() -> None:
+    """Multibacilar e grau II medem a mesma coisa: gravidade no diagnóstico.
+
+    Os dois sobem quando o diagnóstico demora, então uma queda é boa nos
+    dois. Só o grau II estava marcado assim, e a proporção de MB caindo
+    aparecia em ocre, como piora. A equipe parceira apontou na revisão de
+    outubro: "o MB apresentou uma redução, acho que neste caso deveria ser
+    verde".
+    """
+    pack = doencas.carregar("hanseniase")
+    assert "prop_mb_pct" in pack.BOM_SE_CAI
+    assert "prop_grau2_pct" in pack.BOM_SE_CAI
+    # E as que sobem quando o programa vai bem continuam de fora.
+    assert not {"cura_pct", "contatos_pct", "gif_avaliado_pct"} & pack.BOM_SE_CAI

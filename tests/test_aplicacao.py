@@ -26,6 +26,8 @@ import pytest
 
 pytest.importorskip("duckdb")
 
+import re  # noqa: E402
+
 from streamlit.testing.v1 import AppTest  # noqa: E402
 
 from src import resiliencia  # noqa: E402
@@ -300,3 +302,23 @@ def test_a_serie_dos_topicos_ignora_a_janela_de_anos() -> None:
 
     texto = " ".join(m.value for m in at.markdown)
     assert "2010 a" in texto, "a calha deveria anunciar a série inteira"
+
+
+def test_a_base_do_calculo_mostra_a_completude_do_campo() -> None:
+    """Quantos preenchidos **de quantos** — pedido da revisão de outubro.
+
+    Com só o número preenchido, a caixa levantava a pergunta que não
+    respondia: "tem muita incompletude nessa informação?". A tabela agregada
+    não traz os brancos — registros sem o campo simplesmente não têm linha —,
+    então o universo vem de fora, do modo de entrada, que todo registro tem.
+
+    Em 2024, em PE, são 2.466 casos, e forma clínica está em 2.337 deles.
+    """
+    at = _rodar()
+    _conferir(at, "base do cálculo com universo")
+
+    texto = " ".join(m.value for m in at.markdown)
+    assert "casos com o campo preenchido" in texto
+    assert re.search(r"\d[\d.]* de \d[\d.]* casos com o campo preenchido \(\d+,\d%\)", texto), (
+        "a caixa deveria trazer preenchidos, total e o percentual"
+    )
