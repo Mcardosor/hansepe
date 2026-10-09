@@ -56,3 +56,9 @@ docs/revisao-graficos.md
 
 # Configuração local de desenvolvimento, fora da entrega.
 /.claude/
+
+# PDF gerado a partir do Markdown ao lado, para anexar em e-mail ou grupo.
+# Fora do versionamento de propósito: versionado, ele viraria uma segunda
+# fonte e divergiria do `.md` na primeira revisão que alguém esquecesse de
+# reexportar. O Markdown manda; o PDF se refaz quando precisar.
+docs/*.pdf
