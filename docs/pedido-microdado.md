@@ -6,7 +6,7 @@ Documento para envio à equipe responsável pela extração.
 | | |
 |---|---|
 | Destinatário | equipe parceira responsável pela extração do SINAN |
-| Versão | 1.1 |
+| Versão | 1.2 |
 | Última revisão | outubro de 2026 |
 | Responsável técnico | Matheus Cardoso |
 
@@ -69,16 +69,24 @@ declarada. Preferimos UTF-8; a extração de Recife veio em Latin-1. Arquivo
 **Separadamente**, a tabela de população de menores de 15 anos por município
 e ano, que não depende do microdado e pode vir antes.
 
-## Três dúvidas sobre os campos
+## Quatro dúvidas sobre os campos
 
-1. O campo `TPALTA_N` e as datas de alta refletem o registro no momento da
+1. **O ano das tabelas que recebemos é o de notificação ou o de
+   diagnóstico?** É a dúvida mais importante desta lista. Ela não muda só o
+   rótulo de um eixo: muda a leitura de todos os números anuais do painel,
+   inclusive os que já conferimos contra o boletim. Procuramos na
+   documentação recebida e não está declarado; consultamos a equipe de
+   vigilância, que também não soube dizer. Enquanto não tivermos a resposta,
+   o eixo do tempo fica sem nome — preferimos isso a escrever o nome errado.
+
+2. O campo `TPALTA_N` e as datas de alta refletem o registro no momento da
    extração, ou já consideram o fechamento de coorte do Ministério, com
    paucibacilares do ano seguinte e multibacilares de dois anos depois?
 
-2. `CONTREG` e `CONTEXAM` são contagens de contatos por caso? Nos agregados
+3. `CONTREG` e `CONTEXAM` são contagens de contatos por caso? Nos agregados
    chegaram como valores 0, 1, 2 e assim por diante, sem rótulo.
 
-3. `FORMACLINI` veio sem rótulo no dicionário. Os códigos correspondem a
+4. `FORMACLINI` veio sem rótulo no dicionário. Os códigos correspondem a
    1 indeterminada, 2 tuberculoide, 3 dimorfa, 4 virchowiana e 5 não
    classificada?
 

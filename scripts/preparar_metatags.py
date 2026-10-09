@@ -33,6 +33,13 @@ IMAGEM = URL + "preview.png"
 
 ANCORA = "<title>Streamlit</title>"
 
+#: O Streamlit serve a página com `lang="en"`, e o painel é todo em
+#: português. Não é detalhe de validação: o leitor de tela escolhe voz e
+#: fonética por este atributo, e "Hanseníase" lido com fonética inglesa não
+#: se entende. A WCAG cobra no nível A (3.1.1), e a correção é um atributo.
+ANCORA_IDIOMA = '<html lang="en">'
+IDIOMA = '<html lang="pt-BR">'
+
 NOVO = f"""<title>{TITULO}</title>
     <meta name="description" content="{DESCRICAO}" />
     <meta property="og:type" content="website" />
@@ -49,6 +56,38 @@ NOVO = f"""<title>{TITULO}</title>
     <meta name="twitter:image" content="{IMAGEM}" />"""
 
 
+def transformar(html: str) -> tuple[str, list[str]]:
+    """Devolve o HTML corrigido e a lista do que foi mexido.
+
+    Separada do disco para poder ser conferida sem reescrever o pacote
+    instalado. Idempotente nas duas trocas: rodar de novo sobre o resultado
+    não muda nada e não reclama — o build repete a cada imagem.
+    """
+    feito: list[str] = []
+
+    if "og:title" not in html:
+        if ANCORA not in html:
+            raise LookupError(
+                f"não encontrei {ANCORA!r}. O HTML do Streamlit mudou; ajuste "
+                "`ANCORA`. Sem isso o painel volta a se anunciar como "
+                "'Streamlit' ao ser compartilhado."
+            )
+        html = html.replace(ANCORA, NOVO, 1)
+        feito.append("metatags")
+
+    if IDIOMA not in html:
+        if ANCORA_IDIOMA not in html:
+            raise LookupError(
+                f"não encontrei {ANCORA_IDIOMA!r}; ajuste `ANCORA_IDIOMA`. Sem "
+                "isso a página volta a se declarar em inglês e o leitor de "
+                "tela lê o português com fonética inglesa."
+            )
+        html = html.replace(ANCORA_IDIOMA, IDIOMA, 1)
+        feito.append("idioma")
+
+    return html, feito
+
+
 def main() -> int:
     import streamlit
 
@@ -60,23 +99,19 @@ def main() -> int:
     with io.open(indice, encoding="utf-8") as arquivo:
         html = arquivo.read()
 
-    if "og:title" in html:
-        print("metatags já presentes — nada a fazer")
-        return 0
-
-    if ANCORA not in html:
-        print(
-            f"ERRO: não encontrei {ANCORA!r} em {indice}.\n"
-            "O HTML do Streamlit mudou. Ajuste `ANCORA` antes de seguir — sem "
-            "isso o painel volta a se anunciar como 'Streamlit' ao ser "
-            "compartilhado.",
-            file=sys.stderr,
-        )
+    try:
+        novo_html, feito = transformar(html)
+    except LookupError as erro:
+        print(f"ERRO em {indice}: {erro}", file=sys.stderr)
         return 1
 
+    if not feito:
+        print("metatags e idioma já presentes — nada a fazer")
+        return 0
+
     with io.open(indice, "w", encoding="utf-8") as arquivo:
-        arquivo.write(html.replace(ANCORA, NOVO, 1))
-    print(f"metatags injetadas em {indice}")
+        arquivo.write(novo_html)
+    print(f"{' e '.join(feito)}: ajustados em {indice}")
     return 0
 
 
