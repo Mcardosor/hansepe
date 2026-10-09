@@ -102,6 +102,25 @@
     return util / eixo.data.length / colunas >= preciso;
   }
 
+  /** Dá nome ao iframe, para quem navega por leitor de tela.
+
+      O Streamlit batiza o quadro com o nome interno do componente, e o
+      leitor anuncia "src ponto grafico underscore componente ponto grafico
+      underscore echarts" — nome de módulo, que não diz o que há dentro. O
+      conteúdo é um canvas, que o leitor não alcança de todo jeito; um nome
+      honesto ao menos permite reconhecer o quadro e passar adiante.
+
+      O título do próprio gráfico serve quando existe. Quando não existe, o
+      genérico ainda é melhor que o nome do módulo. */
+  function nomearQuadro(option) {
+    try {
+      const quadro = window.frameElement;
+      if (!quadro) return;
+      const titulo = option.title && option.title.text;
+      quadro.title = titulo ? `Gráfico: ${titulo}` : "Gráfico do painel";
+    } catch (e) { /* iframe de outra origem: segue sem nome */ }
+  }
+
   function render(args, tema) {
     const option = typeof args.option === "string" ? JSON.parse(args.option) : args.option;
     const altura = Number(args.altura) || 300;
@@ -182,6 +201,7 @@
     // manda `label.casas`; o formatador em pt-BR nasce aqui, porque função
     // não atravessa o JSON que o componente recebe. Valor nulo — ano de
     // coorte aberta — não escreve "null" em cima da barra vazia.
+    nomearQuadro(option);
     const cabe = rotuloCabe(option);
     (option.series || []).forEach((s) => {
       if (s.label && s.label.show && !cabe) s.label.show = false;

@@ -241,3 +241,15 @@ def test_o_componente_do_grafico_esta_versionado() -> None:
     import hashlib
     atual = hashlib.sha1((gc.DIRETORIO / "grafico.js").read_bytes()).hexdigest()[:8]
     assert f"grafico.js?v={atual}" in html, "rode `python -m scripts.versionar_js`"
+
+
+def test_o_quadro_do_grafico_tem_nome_para_leitor_de_tela() -> None:
+    """Mesma razão do mapa: o nome do módulo não diz o que o quadro mostra.
+
+    Aqui o título do próprio gráfico serve quando existe; quando não existe,
+    o genérico ainda é melhor que "src ponto grafico underscore componente".
+    """
+    js = (gc.DIRETORIO / "grafico.js").read_text(encoding="utf-8")
+    assert "window.frameElement" in js
+    assert "option.title && option.title.text" in js
+    assert "Gráfico do painel" in js, "falta o nome de quando não há título"

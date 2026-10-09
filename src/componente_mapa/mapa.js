@@ -96,6 +96,19 @@
   function render(args) {
     const spec = typeof args.spec === "string" ? JSON.parse(args.spec) : args.spec;
     tooltipSpec = args.tooltip || null;
+    // Nome do quadro para leitor de tela. O Streamlit o batiza com o nome
+    // interno do componente — "src ponto mapa underscore componente" —, que
+    // não diz nada. O mapa é um canvas e continua fora do alcance do leitor;
+    // o nome serve para reconhecer o quadro e seguir em frente.
+    try {
+      const quadro = window.frameElement;
+      if (quadro) {
+        const metrica = tooltipSpec && tooltipSpec.metrica;
+        quadro.title = metrica
+          ? `Mapa de Pernambuco: ${metrica}`
+          : "Mapa de Pernambuco";
+      }
+    } catch (e) { /* iframe de outra origem: segue sem nome */ }
     const altura = alturaUtil(Number(args.altura) || 500);
     // Quem pediu menos movimento no sistema não recebe voo nem interpolação:
     // a câmera vai direto ao enquadramento novo.

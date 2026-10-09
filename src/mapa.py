@@ -1272,6 +1272,10 @@ def deck(
         # Formato do painel de origem: título, a métrica pintada em destaque
         # e, abaixo, os componentes com a bolinha na cor de cada métrica.
         tooltip={
+            # Não é usado no balão: é o nome que o componente dá ao iframe,
+            # para o leitor de tela anunciar "Mapa de Pernambuco: Taxa de
+            # detecção" em vez do nome interno do módulo.
+            "metrica": rotulo_metrica,
             "html": (
                 "<div style='font-weight:700;font-size:13px'>{rotulo}</div>"
                 f"<div style='opacity:.85;margin-bottom:4px'>{rotulo_metrica}: "

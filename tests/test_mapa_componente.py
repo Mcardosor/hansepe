@@ -130,3 +130,25 @@ def test_o_mapa_limita_a_altura_pela_largura() -> None:
     js = (mapa_componente.DIRETORIO / "mapa.js").read_text(encoding="utf-8")
     assert "function alturaUtil" in js
     assert "Math.min(pedida" in js, "o teto tem de limitar, não substituir"
+
+
+def test_o_quadro_do_mapa_tem_nome_para_leitor_de_tela() -> None:
+    """O Streamlit batiza o iframe com o nome interno do componente.
+
+    Um leitor de tela anuncia "src ponto mapa underscore componente ponto
+    mapa underscore deck" — nome de módulo, que não diz o que há dentro. O
+    mapa é um canvas e continua fora do alcance do leitor de qualquer forma;
+    o nome serve para reconhecer o quadro e passar adiante, que é o que a
+    WCAG cobra de um frame.
+
+    O nome da métrica viaja junto do tooltip, e não num argumento novo: o
+    componente já recebe esse dicionário a cada desenho.
+    """
+    js = (mapa_componente.DIRETORIO / "mapa.js").read_text(encoding="utf-8")
+    assert "window.frameElement" in js
+    assert "Mapa de Pernambuco" in js
+    assert "tooltipSpec.metrica" in js
+    # E o Python manda o nome.
+    assert '"metrica": rotulo_metrica' in (
+        (mapa_componente.DIRETORIO.parents[0] / "mapa.py").read_text(encoding="utf-8")
+    )
